@@ -1,0 +1,34 @@
+{
+  "name": "fitnesssns_backend",
+  "version": "1.0.0",
+  "description": "Fitness SNS API Server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node index.js",
+    "prod": "Node_Environment = production node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FitnessSNS/FitnessSNS_Backend.git"
+  },
+  "keywords": [
+    "fitness"
+  ],
+  "author": "bbaekddo, kimtahen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FitnessSNS/FitnessSNS_Backend/issues"
+  },
+  "homepage": "https://github.com/FitnessSNS/FitnessSNS_Backend#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "express": "^4.18.1",
+    "nodemon": "^2.0.19",
+    "pm2": "^5.2.0",
+    "regex-email": "^1.0.2",
+    "winston": "^3.8.1",
+    "winston-daily-rotate-file": "^4.7.1"
+  }
+}
