@@ -13,3 +13,6 @@ logs
 
 # pacakge-lock
 /package-lock.json
+
+# environment keys
+.env
