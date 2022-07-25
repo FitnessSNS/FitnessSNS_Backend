@@ -1,27 +1,32 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const app = express();
 const port = 3000;
 
-app.get('/', (req, res) => {
-    res.send('Express Test');
-});
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+//passport config
+const passport = require('passport');
+const {initialize} = require('./passport/index');
+app.use(passport.initialize());
+initialize();
+
+//routers
+const auth = require('./src/app/Auth/authRoute');
+app.use('/auth', auth);
 
 //404 error handling
 app.use(function(req, res, next) {
-  next(); //404 error handling
+    console.log('404');
+    next({status: 404, message: 'page not found'}); //404 error handling
 });
 
 //global error handling
 app.use(function(err, req, res, next) {
-    /*
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-    // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-  */
-    
+    console.log('global error', err);
+    res.status(err.status).json({message: err.message}); 
 });
 
 
