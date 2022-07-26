@@ -9,7 +9,7 @@ app.use(cookieParser());
 
 //passport config
 const passport = require('passport');
-const {initialize} = require('./passport/index');
+const {initialize} = require('./config/passport/index');
 app.use(passport.initialize());
 initialize();
 

@@ -5,14 +5,15 @@ const { ExtractJwt, Strategy: JWTStrategy } = require('passport-jwt');
 require('dotenv').config();
 
 const mockUser = {
-    userId : 'user1',
+    id : 'user1',
     password : 'password1', 
+    status:'online',
 };
-function mockUserCheck(userId){
+function mockUserCheck(id){
     return new Promise((resolve, reject)=>{
         setTimeout(()=>{
-            if(userId === mockUser.userId){
-                resolve({userId : mockUser.userId});
+            if(id === mockUser.id){
+                resolve({id : mockUser.id});
             }
             else {
                 resolve();
@@ -20,8 +21,8 @@ function mockUserCheck(userId){
         }, 1000);
     })
 }
-function mockUserVerify(userId, password){
-    return (mockUser.userId === userId) && (mockUser.password === password);
+function mockUserVerify(id, password){
+    return (mockUser.id === id) && (mockUser.password === password);
 }
 
 //local strategy
@@ -43,6 +44,8 @@ const localVerify =  async (userId, password, done) => {
         done(e);
     }
 }
+
+/* jwt using passport-jwt depreciated
 
 //jwt strategy
 const cookieExtractor = (req)=>{
@@ -67,13 +70,14 @@ const jwtVerify = async (payload, done) => {
         done(e);
     }
 }
-
+*/
 
 module.exports = {
     initialize : () => {
         passport.use('local', new LocalStrategy(localConfig, localVerify));
-        passport.use('jwt', new JWTStrategy(jwtConfig, jwtVerify));
+        //passport.use('jwt', new JWTStrategy(jwtConfig, jwtVerify));
     },
+    /*
     authenticate : (req, res, next) => {
         return passport.authenticate('jwt', {session: false}, (err, user, info) => {
             if(err){
@@ -88,4 +92,5 @@ module.exports = {
             next();
         })(req,res,next);
     }
+    */
 }
