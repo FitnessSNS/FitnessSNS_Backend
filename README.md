@@ -13,11 +13,14 @@ Node.js API Server
 
 ```
 .
+├── common                              # 사용자 정의 함수가 들어있는 폴더
+│   ├── index.js                        # async 래핑 함수 외
 ├── config                              # 설정 파일들이 들어가 있는 폴더
-│   ├── database.js                     # 데이터베이스 관련 설정 (.gitignore)
+│   ├── response.js                     # API 응답 프레임
+│   ├── baseResponseStatus.js           # API 응답 코드 및 메세지
 ├── node_modules                        # 노드 모듈
 ├── src
-│   ├── app                             # 앱에 대한 코드 작성
+│   ├── app                             # 어플리케이션에 대한 코드 작성
 │   │   ├── User                        # User 관련 코드
 │   │   │   ├── userRoute.js            # User 라우팅
 │   │   │   ├── userController.js       # req, res 처리
@@ -25,7 +28,7 @@ Node.js API Server
 │   │   │   ├── userService.js          # CUD에 해당하는 서버 로직 처리
 ├── utils
 ├── .gitignore                          # git 에 포함되지 않아야 하는 폴더, 파일들을 작성 해놓는 곳
-├── index.js
+├── index.js                            # express 미들웨어 포함
 ├── package-lock.json
 ├── package.json                        # 프로그램 이름, 버전, 필요한 모듈 등 노드 프로그램의 정보를 기술
 └── README.md
@@ -33,20 +36,20 @@ Node.js API Server
 
 ---
 
+## API Connection
+
+본 서버는 생활운동 SNS 서비스에서 사용하는 API로써 역할을 함
+
+### Option 1: Connection Test
+
+서버 연결을 위한 API 테스트 가이드
+
+https://www.sosocamp.shop/app/test/connection 으로 POST 요청
+
+
 > 이 아래부터 미완성
-
-## Installation
-
-After install, make sure to run `joe u`. This will download all `.gitignore` files in `~/joe-data/` folder.
-
-### Option 1: Binary
-
-`joe` is available for OSX (macOS), Linux and Windows.
-
-Download the latest binary from the [Releases page](https://github.com/karan/joe/releases). It's the easiest way to get started with `joe`.
-
-Make sure to add the location of the binary to your `$PATH`.
-
+> 
+> 
 ### Option 2: From source
 
 ```bash

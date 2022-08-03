@@ -11,8 +11,5 @@ logs
 # Node.js 모듈
 /node_modules/
 
-# pacakge-lock
-/package-lock.json
-
 # environment keys
 .env
