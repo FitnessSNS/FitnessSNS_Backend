@@ -13,3 +13,6 @@ logs
 
 # environment keys
 .env
+
+#sqlite3 test database
+sqlite

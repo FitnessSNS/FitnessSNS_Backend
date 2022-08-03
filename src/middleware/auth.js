@@ -1,29 +1,8 @@
 const jwt = require('jsonwebtoken');
 
+const db = require('../../config/db');
+
 require('dotenv').config();
-
-const {wrapAsync} = require('../../common/index');
-
-const mockUser = {
-    id : 'user1',
-    password : 'password1', 
-    status: 'onine',
-};
-function mockUserCheck(id){
-    return new Promise((resolve, reject)=>{
-        setTimeout(()=>{
-            if(id === mockUser.id){
-                resolve({...mockUser});
-            }
-            else {
-                resolve();
-            }
-        }, 1000);
-    })
-}
-function mockUserVerify(id, password){
-    return (mockUser.id === id) && (mockUser.password === password);
-}
 
 
 const cookieExtractor = (req)=>{
@@ -46,16 +25,15 @@ const authenticate = async (req, res, next) => {
         }
         let decoded = accessTokenVerify(target); 
 
-        let user = await mockUserCheck(decoded.id);
+        let user = await db.models.User.findOne({where : { email : decoded.email}});
         
         if(!user){
             next({status: 400, message: "user not exists"});
             return;
         }
 
-        req.user = {id: user.id, status: user.status};
+        req.user = {email: user.email, name: user.name, status: user.status};
         next();
-
     } catch (e) {
         if(e.name=="TokenExpiredError"){
             next({status: 401, message: "token has expired"});

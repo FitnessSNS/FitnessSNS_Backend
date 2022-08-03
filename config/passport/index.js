@@ -1,41 +1,26 @@
 const passport = require('passport');
 const { Strategy: LocalStrategy } = require('passport-local');
-const { ExtractJwt, Strategy: JWTStrategy } = require('passport-jwt');
+
+const db = require('../db/index');
 
 require('dotenv').config();
 
-const mockUser = {
-    id : 'user1',
-    password : 'password1', 
-    status:'online',
-};
-function mockUserCheck(id){
-    return new Promise((resolve, reject)=>{
-        setTimeout(()=>{
-            if(id === mockUser.id){
-                resolve({id : mockUser.id});
-            }
-            else {
-                resolve();
-            }
-        }, 1000);
-    })
-}
-function mockUserVerify(id, password){
-    return (mockUser.id === id) && (mockUser.password === password);
+function verifyUser(pwfromClient, pwfromDB){
+    return pwfromClient===pwfromDB;
 }
 
 //local strategy
-const localConfig = {usernameField: 'userId', passwordField: 'password'};
-const localVerify =  async (userId, password, done) => {
+const localConfig = {usernameField: 'email', passwordField: 'password'};
+const localVerify =  async (email, password, done) => {
     try {
-        const user = await mockUserCheck(userId);  
+        const user = await db.models.User.findOne({where: {email}});  
+         
         if(!user){
             done(null, false, {message: "user not exist"});
             return;
         }
-        if(mockUserVerify(userId, password)){
-            done(null, user);
+        if(verifyUser(password, user.dataValues.password)){
+            done(null, { email : user.dataValues.email, name : user.dataValues.name });
         } else {
             done(null, false, {message: "password not same"});
         }
