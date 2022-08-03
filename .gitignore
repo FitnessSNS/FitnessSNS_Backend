@@ -1,0 +1,15 @@
+# Jetbrain 설정 파일
+.idea
+
+# VSCode 설정파일
+# 입력
+
+# 로그
+log
+logs
+
+# Node.js 모듈
+/node_modules/
+
+# environment keys
+.env
