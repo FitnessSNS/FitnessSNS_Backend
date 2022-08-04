@@ -20,7 +20,7 @@ const localVerify =  async (email, password, done) => {
             return;
         }
         if(verifyUser(password, user.dataValues.password)){
-            done(null, { email : user.dataValues.email, name : user.dataValues.name });
+            done(null, { id: user.id, email : user.email, name : user.name });
         } else {
             done(null, false, {message: "password not same"});
         }

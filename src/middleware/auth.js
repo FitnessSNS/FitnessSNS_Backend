@@ -5,41 +5,44 @@ const db = require('../../config/db');
 require('dotenv').config();
 
 
-const cookieExtractor = (req)=>{
+const accessTokenExtractor = (req)=>{
     let token = null;
-    if (req&&req.cookies&&(req.cookies['jwt']!="")) token = req.cookies['jwt'];
+    if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
     return token;
 };
 
-const accessTokenVerify = (token) => {
-    let decoded = jwt.verify(token, process.env.JWT_KEY );     
-    return decoded;
-}
 
 const authenticate = async (req, res, next) => {
     try {
-        let target = cookieExtractor(req);
-        if(target === null || target === undefined){
-            next({status: 401, message: "unauthorized"});
+        let token = accessTokenExtractor(req);
+        if(token === null || token === undefined){
+            next();
             return;
         }
-        let decoded = accessTokenVerify(target); 
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_KEY); 
+        } catch (e) {
+            if (e.name == "TokenExpiredError") {
+                next({ status: 440, message: `access token has expired.` });
+                return;
+            }
+            next();
+            return;
+        }
 
         let user = await db.models.User.findOne({where : { email : decoded.email}});
-        
         if(!user){
-            next({status: 400, message: "user not exists"});
+            next();
             return;
         }
 
         req.user = {email: user.email, name: user.name, status: user.status};
         next();
     } catch (e) {
-        if(e.name=="TokenExpiredError"){
-            next({status: 401, message: "token has expired"});
-        }else {
-            next({status: 500, message: "internal server error"});
-        }
+        console.log(e);
+        next({ status: 500, message: "internal server error" });
+        
     }
 }
 

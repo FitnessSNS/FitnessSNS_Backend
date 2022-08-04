@@ -77,6 +77,6 @@ db.sequelize
     .catch((err) => { console.error(err) });
 
 // listen 시작
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Listening...`);
 });
