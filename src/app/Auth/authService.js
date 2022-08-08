@@ -61,3 +61,34 @@ exports.updateSession = async (prev_token, new_token) => {
     }
 
 }
+
+exports.getUserByEmail = async ({provider, email}) => {
+    try {
+        let user = await prisma.user.findFirst({
+            where : {
+                provider,
+                email 
+            },
+        });
+        console.log(email);
+        return user;
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
+}
+
+exports.getUserByProviderId = async ({provider, provider_id}) => {
+    try {
+        let user = await prisma.user.findFirst({
+            where : {
+                provider,
+                provider_id: String(provider_id),
+            },
+        });
+        return user;
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
+}

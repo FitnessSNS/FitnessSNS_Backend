@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const authResponse = require('../app/Auth/authResponse');
+
 require('dotenv').config();
 
 
@@ -25,14 +27,14 @@ const authenticate = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_KEY); 
         } catch (e) {
             if (e.name == "TokenExpiredError") {
-                next({ status: 440, message: `access token has expired.` });
+                res.send(authResponse.ACCESS_TOKEN_EXPIRED);
                 return;
             }
             next();
             return;
         }
 
-        let user = await prisma.user.findUnique({where : { email : decoded.email}});
+        let user = await prisma.user.findFirst({where : { provider: decoded.provider, email : decoded.email}});
         if(!user){
             next();
             return;

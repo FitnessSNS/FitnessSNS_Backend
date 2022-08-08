@@ -15,14 +15,14 @@ function verifyUser(pwfromClient, pwfromDB){
 const localConfig = {usernameField: 'email', passwordField: 'password'};
 const localVerify =  async (email, password, done) => {
     try {
-        const user = await prisma.user.findUnique({where: {email}});  
+        const user = await prisma.user.findFirst({where: {email}});  
          
         if(!user){
             done(null, false, {message: "user not exist"});
             return;
         }
         if(verifyUser(password, user.password)){
-            done(null, { id: user.id, email : user.email, name : user.name });
+            done(null, user);
         } else {
             done(null, false, {message: "password not same"});
         }

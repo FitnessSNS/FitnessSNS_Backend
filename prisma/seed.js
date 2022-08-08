@@ -3,33 +3,53 @@ const prisma = new PrismaClient();
 
 const load = async () => {
     try {
-        await prisma.user.create({
+        let user;
+        user = await prisma.user.create({
             data: {
                 email: "user1@gmail.com",
-                nickname: "user1",
+                provider: "local",
                 password: "password1",
                 status: "run",
+                account_details_saved: true,
+                UserProfile: {
+                    create: {
+                        nickname: "nicknameofuser1"
+                    }
+                }
+                
             }
         });
-        console.log("user1 created");
-        await prisma.user.create({
+        console.log("user1 created",user);
+
+        user = await prisma.user.create({
             data: {
-                email: "user2@gmail.com",
-                nickname: "user2",
-                password: "password2",
-                status: "stop",
+                email: "user2@naver.com",
+                provider: "local",
+                status: "run",
+                account_details_saved: false,
             }
-        });
-        console.log("user2 created");
-        await prisma.user.create({
+        })
+        console.log("user2 created",user);
+
+        userProfile = await prisma.userProfile.create({
             data: {
-                email: "user3@gmail.com",
-                nickname: "user3",
-                password: "password3",
-                status: "pause",
+                nickname: "nicknameofuser2",
+                user: {
+                    connect: {
+                        id: 2,
+                    }
+                }
             }
-        });
-        console.log("user3 created");
+        })
+        await prisma.user.update({
+            where: {
+                id: 2,
+            },
+            data: {
+                account_details_saved: true,
+            }
+        })
+        console.log("user2 profile created");
         
     } catch (e) {
         console.error(e);

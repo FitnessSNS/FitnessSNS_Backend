@@ -12,14 +12,27 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  nickname  String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  upadtedAt DateTime @updatedAt
-  status    String
-  Session   Session?
+  id                    Int          @id @default(autoincrement())
+  provider              String // local | kakao
+  provider_id           String?
+  email                 String //@db.VarChar(100)
+  password              String? //@db.Text 
+  createdAt             DateTime     @default(now())
+  upadtedAt             DateTime     @updatedAt
+  status                String // run | paused | deleted
+  account_details_saved Boolean      @default(false) //@db.Bit
+  UserProfile           UserProfile?
+  Session               Session?
+
+  @@unique([provider, provider_id])
+  @@unique([provider, email])
+}
+
+model UserProfile {
+  id       Int    @id @default(autoincrement())
+  nickname String @unique //@db.VarChar(20)
+  user     User   @relation(fields: [userId], references: [id])
+  userId   Int    @unique
 }
 
 model Session {

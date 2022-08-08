@@ -5,8 +5,19 @@ const {authenticate} = require("../../middleware/auth");
 
 router.get('/dbtest', authController.dbtest);
 router.get('/jwttest', authenticate, authController.jwttest);
+
+//jwt routes
 router.post('/common/refresh', authController.refresh);
-router.post('/common/logout', authController.logout);
+
+//sign in routes
 router.post('/signin', authController.signin);
+router.get('/kakao/authorize',authController.kakao_authorize);
+router.get('/kakao/signin', authController.kakao_signin);
+
+//sign up routes
+router.post('/signup');
+
+//log out routes
+router.post('/common/logout', authController.logout);
 
 module.exports = router;
