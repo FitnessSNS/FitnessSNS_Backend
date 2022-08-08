@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-const db = require('../../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 require('dotenv').config();
 
@@ -31,7 +32,7 @@ const authenticate = async (req, res, next) => {
             return;
         }
 
-        let user = await db.models.User.findOne({where : { email : decoded.email}});
+        let user = await prisma.user.findUnique({where : { email : decoded.email}});
         if(!user){
             next();
             return;

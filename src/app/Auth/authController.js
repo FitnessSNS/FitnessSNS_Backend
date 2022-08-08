@@ -1,34 +1,39 @@
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const db = require('../../../config/db');
 const authService = require('./authService');
 const authResponse = require('./authResponse');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 require('dotenv').config();
 
-
+const dbtest = async (req, res, next) => {
+    let users = await prisma.user.findMany();
+    res.send({ users });
+}
 const jwttest = async (req, res, next) => {
     try {
-        if(!req.user){
-            next({status: 401, message: 'unauthorized'});
+        if (!req.user) {
+            next({ status: 401, message: 'unauthorized' });
             return;
         }
-        res.status(200).json({msg: `${req.user.name} got the pizza. he/she is ${req.user.status}.`}); 
+        res.status(200).json({ msg: `${req.user.name} got the pizza. he/she is ${req.user.status}.` });
     } catch (e) {
         console.error(e);
-        next({status: 500, message: 'internal server error'});
+        next({ status: 500, message: 'internal server error' });
     }
 }
-const refreshTokenExtractor = (req)=>{
+const refreshTokenExtractor = (req) => {
     let token = null;
-    if (req&&req.cookies&&(req.cookies['refresh_token']!="")) token = req.cookies['refresh_token'];
+    if (req && req.cookies && (req.cookies['refresh_token'] != "")) token = req.cookies['refresh_token'];
     return token;
 };
 
 const refresh = async (req, res, next) => {
     try {
         let token = refreshTokenExtractor(req);
-        if(token === null || token === undefined){
+        if (token === null || token === undefined) {
             res.send(authResponse.REFRESH_TOKEN_EMPTY);
             return;
         }
@@ -44,14 +49,15 @@ const refresh = async (req, res, next) => {
                 res.send(authResponse.REFRESH_TOKEN_EXPIRED);
                 return;
             }
-            next({status: 500, message: 'internal server error'});
+            next({ status: 500, message: 'internal server error' });
             return;
-        } 
-        const {session, user} = await authService.getSessionByToken(token);
-        if(session){
+        }
+        const { session } = await authService.getSessionByToken(token);
+        console.log(session);
+        if (session) {
             const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-            if(session.ip === ip){
-                const access_token = jwt.sign({ email: user.email }, process.env.JWT_KEY, { expiresIn: '1m' });
+            if (session.ip === ip) {
+                const access_token = jwt.sign({ email: session.user.email }, process.env.JWT_KEY, { expiresIn: '1m' });
                 res.cookie('access_token', access_token, {
                     httpOnly: true,
                 });
@@ -61,7 +67,7 @@ const refresh = async (req, res, next) => {
                     path: '/auth/common'
                 });
                 await authService.updateSession(session.refresh_token, refresh_token);
-                res.status(200).json({message: 'your tokens are re-generated'});
+                res.status(200).json({ message: 'your tokens are re-generated' });
             }
             else {
                 await authService.deleteSession(session.refresh_token);
@@ -72,7 +78,7 @@ const refresh = async (req, res, next) => {
         }
     } catch (e) {
         console.error(e);
-        next({status: 500, message: 'internal server error'});
+        next({ status: 500, message: 'internal server error' });
     }
 }
 
@@ -85,7 +91,7 @@ const signin = async (req, res, next) => {
                     return;
                 }
                 if (!user) {
-                    next({ status: 400, message: info.message });
+                    res.send(authResponse.USER_VALIDATION_FAILURE);
                     return;
                 }
                 const access_token = jwt.sign({ email: user.email }, process.env.JWT_KEY, { expiresIn: '1m' });
@@ -99,44 +105,43 @@ const signin = async (req, res, next) => {
                     path: '/auth/common'
                 });
                 const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-                
-                const {session} = await authService.getSessionByUserId(user.id);
-                if(session){
+
+                const { session } = await authService.getSessionByUserId(user.id);
+                console.log('session', session);
+                if (session) {
                     await authService.updateSession(session.refresh_token, refresh_token);
-                    console.log('session exists');
                 } else {
                     await authService.createSession(user.id, refresh_token, ip);
-                    console.log('session create');
                 }
                 res.status(200).json({ message: "your token was generated" });
 
             } catch (e) {
                 console.error(e);
-                next({status: 500, message: 'internal server error'});
+                next({ status: 500, message: 'internal server error' });
             }
-        })(req,res);        
+        })(req, res);
 
     } catch (e) {
         console.error(e);
-        next({status: 500, message: 'internal server error'});
+        next({ status: 500, message: 'internal server error' });
     }
 }
 
-const signout = async (req, res, next) => {
+const logout = async (req, res, next) => {
     try {
         let token = refreshTokenExtractor(req);
-        if(token){
+        if (token) {
             await authService.deleteSession(token);
         }
         res.clearCookie('access_token');
         res.clearCookie('refresh_token');
 
-        res.status(200).json({message: "logout success"});
+        res.status(200).json({ message: "logout success" });
     } catch (e) {
         console.error(e);
-        next({status: 500, message: 'internal server error'});
+        next({ status: 500, message: 'internal server error' });
     }
 
 }
 
-module.exports = {jwttest, refresh, signin, signout};
+module.exports = { dbtest, jwttest, refresh, signin, logout };

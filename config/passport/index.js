@@ -1,7 +1,9 @@
 const passport = require('passport');
 const { Strategy: LocalStrategy } = require('passport-local');
 
-const db = require('../db/index');
+//const db = require('../db/index');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 require('dotenv').config();
 
@@ -13,13 +15,13 @@ function verifyUser(pwfromClient, pwfromDB){
 const localConfig = {usernameField: 'email', passwordField: 'password'};
 const localVerify =  async (email, password, done) => {
     try {
-        const user = await db.models.User.findOne({where: {email}});  
+        const user = await prisma.user.findUnique({where: {email}});  
          
         if(!user){
             done(null, false, {message: "user not exist"});
             return;
         }
-        if(verifyUser(password, user.dataValues.password)){
+        if(verifyUser(password, user.password)){
             done(null, { id: user.id, email : user.email, name : user.name });
         } else {
             done(null, false, {message: "password not same"});

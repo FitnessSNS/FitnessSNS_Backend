@@ -5,7 +5,7 @@ const compression = require('compression');
 const methodOverride = require('method-override');
 const cors = require('cors');
 
-const db = require('./config/db/index');
+//const db = require('./config/db/index');
 
 //passport config
 const passport = require('passport');
@@ -71,10 +71,12 @@ app.use(function(err, req, res, next) {
 });
 
 //db connection
+/*
 db.sequelize
     .authenticate()
     .then(() => { console.log('connected database') })
     .catch((err) => { console.error(err) });
+    */
 
 // listen 시작
 app.listen(port, '0.0.0.0', () => {

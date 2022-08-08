@@ -1,7 +1,14 @@
-const db = require('../../../config/db');
-exports.createSession = async (user_id, refresh_token, ip) =>{
-    try{
-        await db.models.Session.create({ refresh_token, ip, UserId: user_id });
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+exports.createSession = async (user_id, refresh_token, ip) => {
+    try {
+        await prisma.session.create({
+            data: {
+                refresh_token,
+                ip,
+                userId: user_id
+            }
+        });
     } catch (e) {
         console.log(e);
         throw e;
@@ -9,10 +16,9 @@ exports.createSession = async (user_id, refresh_token, ip) =>{
 }
 
 exports.getSessionByToken = async (refresh_token) => {
-    try{
-        const session =  await db.models.Session.findOne({where: {refresh_token}});
-        const user = await session.getUser();
-        return {session, user};
+    try {
+        const session = await prisma.session.findFirst({ where: { refresh_token }, include: { user: { select: { email: true } } } });
+        return { session };
     } catch (e) {
         console.log(e);
         throw e;
@@ -20,9 +26,9 @@ exports.getSessionByToken = async (refresh_token) => {
 }
 
 exports.getSessionByUserId = async (user_id) => {
-    try{
-        const session =  await db.models.Session.findOne({where: {UserId: user_id}});
-        return {session};
+    try {
+        const session = await prisma.session.findFirst({ where: { userId: user_id } });
+        return { session };
     } catch (e) {
         console.log(e);
         throw e;
@@ -32,7 +38,7 @@ exports.getSessionByUserId = async (user_id) => {
 
 exports.deleteSession = async (refresh_token) => {
     try {
-        await db.models.Session.destroy({where: {refresh_token}});
+        await prisma.session.deleteMany({ where: { refresh_token } });
     } catch (e) {
         console.log(e);
         throw e;
@@ -41,8 +47,14 @@ exports.deleteSession = async (refresh_token) => {
 
 exports.updateSession = async (prev_token, new_token) => {
     try {
-        await db.models.Session.update({refresh_token: new_token},{where: {refresh_token: prev_token}});
-        console.log(await db.models.Session.findAll());
+        await prisma.session.updateMany({
+            where: {
+                refresh_token: prev_token
+            },
+            data: {
+                refresh_token: new_token
+            }
+        });
     } catch (e) {
         console.log(e);
         throw e;
