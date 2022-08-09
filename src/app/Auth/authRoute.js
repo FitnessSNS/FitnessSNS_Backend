@@ -1,11 +1,23 @@
 var express = require('express');
 var router = express.Router();
 const authController = require('./authController.js');
-const {wrapAsync} = require('../../../common/index');
 const {authenticate} = require("../../middleware/auth");
 
-router.get('/jwttest',wrapAsync(authenticate),wrapAsync(authController.jwttest));
-router.post('/signin', wrapAsync(authController.signin));
-router.post('/logout', wrapAsync(authController.signout));
+router.get('/dbtest', authController.dbtest);
+router.get('/jwttest', authenticate, authController.jwttest);
+
+//jwt routes
+router.post('/common/refresh', authController.refresh);
+
+//sign in routes
+router.post('/signin', authController.signin);
+router.get('/kakao/authorize',authController.kakao_authorize);
+router.get('/kakao/signin', authController.kakao_signin);
+
+//sign up routes
+router.post('/signup');
+
+//log out routes
+router.post('/common/logout', authController.logout);
 
 module.exports = router;

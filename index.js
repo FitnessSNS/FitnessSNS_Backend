@@ -3,9 +3,14 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const methodOverride = require('method-override');
-const cors = require('cors');//passport config
+const cors = require('cors');
+
+//const db = require('./config/db/index');
+
+//passport config
 const passport = require('passport');
 const {initialize} = require('./config/passport/index');
+
 const auth = require('./src/app/Auth/authRoute');
 
 // express 객체 생성
@@ -49,7 +54,7 @@ app.use('/auth', auth);
 
 
 // ------- Routing -------
-require('./src/app/User/userRoute')(app);
+//require('./src/app/User/userRoute')(app);
 
 
 
@@ -65,8 +70,15 @@ app.use(function(err, req, res, next) {
     res.status(err.status).json({message: err.message}); 
 });
 
+//db connection
+/*
+db.sequelize
+    .authenticate()
+    .then(() => { console.log('connected database') })
+    .catch((err) => { console.error(err) });
+    */
 
 // listen 시작
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Listening...`);
 });

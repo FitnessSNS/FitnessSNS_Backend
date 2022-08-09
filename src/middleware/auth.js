@@ -1,67 +1,51 @@
 const jwt = require('jsonwebtoken');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+const authResponse = require('../app/Auth/authResponse');
+
 require('dotenv').config();
 
-const {wrapAsync} = require('../../common/index');
 
-const mockUser = {
-    id : 'user1',
-    password : 'password1', 
-    status: 'onine',
-};
-function mockUserCheck(id){
-    return new Promise((resolve, reject)=>{
-        setTimeout(()=>{
-            if(id === mockUser.id){
-                resolve({...mockUser});
-            }
-            else {
-                resolve();
-            }
-        }, 1000);
-    })
-}
-function mockUserVerify(id, password){
-    return (mockUser.id === id) && (mockUser.password === password);
-}
-
-
-const cookieExtractor = (req)=>{
+const accessTokenExtractor = (req)=>{
     let token = null;
-    if (req&&req.cookies&&(req.cookies['jwt']!="")) token = req.cookies['jwt'];
+    if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
     return token;
 };
 
-const accessTokenVerify = (token) => {
-    let decoded = jwt.verify(token, process.env.JWT_KEY );     
-    return decoded;
-}
 
 const authenticate = async (req, res, next) => {
     try {
-        let target = cookieExtractor(req);
-        if(target === null || target === undefined){
-            next({status: 401, message: "unauthorized"});
+        let token = accessTokenExtractor(req);
+        if(token === null || token === undefined){
+            next();
             return;
         }
-        let decoded = accessTokenVerify(target); 
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_KEY); 
+        } catch (e) {
+            if (e.name == "TokenExpiredError") {
+                res.send(authResponse.ACCESS_TOKEN_EXPIRED);
+                return;
+            }
+            next();
+            return;
+        }
 
-        let user = await mockUserCheck(decoded.id);
-        
+        let user = await prisma.user.findFirst({where : { provider: decoded.provider, email : decoded.email}});
         if(!user){
-            next({status: 400, message: "user not exists"});
+            next();
             return;
         }
 
-        req.user = {id: user.id, status: user.status};
+        req.user = {email: user.email, name: user.name, status: user.status};
         next();
-
     } catch (e) {
-        if(e.name=="TokenExpiredError"){
-            next({status: 401, message: "token has expired"});
-        }else {
-            next({status: 500, message: "internal server error"});
-        }
+        console.log(e);
+        next({ status: 500, message: "internal server error" });
+        
     }
 }
 
