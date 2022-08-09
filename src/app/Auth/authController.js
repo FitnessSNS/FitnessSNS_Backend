@@ -45,10 +45,11 @@ const refresh = async (req, res, next) => {
             jwt.verify(token, process.env.JWT_KEY);
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(authResponse.REFRESH_TOKEN_VERIFICATION_FAILURE);
+                res.send(authResponse.REFRESH_TOKEN_VERIFICATION_FAIL);
                 return;
             }
             if (e.name == "TokenExpiredError") {
+                await authService.deleteSession(token);
                 res.send(authResponse.REFRESH_TOKEN_EXPIRED);
                 return;
             }
@@ -74,10 +75,10 @@ const refresh = async (req, res, next) => {
             }
             else {
                 await authService.deleteSession(session.refresh_token);
-                next({ status: 401, message: "ip has changed. please re-login" });
+                res.send(authResponse.IP_CHANGE_ERROR);
             }
         } else {
-            throw 'Session table does not have refresh token';
+            res.send(authResponse.SESSION_EXPIRED);
         }
     } catch (e) {
         console.error(e);
