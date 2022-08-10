@@ -11,6 +11,9 @@ module.exports = {
     IP_CHANGE_ERROR: {code: 1200, message: "ip has changed. please re-login"},
     SESSION_EXPIRED: {code: 1201, message: "session expired from server"},
 
+    // SignIn
+    EMAIL_VALIDATION_ERROR: {code: 1300, message: "email condition does not match"},
+
     // User
     USER_VALIDATION_FAILURE: {code: 2000, message: "user validation failed" },
 }

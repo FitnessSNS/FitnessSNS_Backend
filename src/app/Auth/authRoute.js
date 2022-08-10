@@ -15,6 +15,7 @@ router.get('/kakao/authorize',authController.kakao_authorize);
 router.get('/kakao/signin', authController.kakao_signin);
 
 //sign up routes
+router.post('/evstart', authController.emailVerifyStart);
 router.post('/signup');
 
 //log out routes

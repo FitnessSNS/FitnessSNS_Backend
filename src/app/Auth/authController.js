@@ -1,6 +1,8 @@
 const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+
 const authService = require('./authService');
 const authResponse = require('./authResponse');
 const userService = require('../User/userService');
@@ -10,11 +12,12 @@ const prisma = new PrismaClient();
 
 require('dotenv').config();
 
-const dbtest = async (req, res, next) => {
+
+exports.dbtest = async (req, res, next) => {
     let users = await prisma.user.findMany();
     res.send({ users });
 }
-const jwttest = async (req, res, next) => {
+exports.jwttest = async (req, res, next) => {
     try {
         if (!req.user) {
             next({ status: 401, message: 'unauthorized' });
@@ -33,7 +36,7 @@ const refreshTokenExtractor = (req) => {
     return token;
 };
 
-const refresh = async (req, res, next) => {
+exports.refresh = async (req, res, next) => {
     try {
         let token = refreshTokenExtractor(req);
         if (token === null || token === undefined) {
@@ -57,7 +60,6 @@ const refresh = async (req, res, next) => {
             return;
         }
         const { session } = await authService.getSessionByToken(token);
-        console.log(session);
         if (session) {
             const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
             if (session.ip === ip) {
@@ -114,7 +116,7 @@ const token_generator = async(req, res, user) =>{
     }
 }
 
-const signin = async (req, res, next) => {
+exports.signin = async (req, res, next) => {
     try {
         passport.authenticate('local', async (err, user, info) => {
             try {
@@ -143,11 +145,11 @@ const signin = async (req, res, next) => {
 }
 
 //kakao oauth
-const kakao_authorize = async (req, res, next) => {
+exports.kakao_authorize = async (req, res, next) => {
     let redirect_url = `kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_REST_API_KEY}&redirect_uri=${'http://localhost:3000/auth/kakao/signin'}&response_type=code`;
     res.send({ redirect_url });
 }
-const kakao_signin = async (req, res, next) => {
+exports.kakao_signin = async (req, res, next) => {
     let code = req.query.code;
     let params = {
         grant_type: 'authorization_code',
@@ -195,8 +197,53 @@ const kakao_signin = async (req, res, next) => {
         next({status: 500, message: 'internal server error'});
     }
 }
+exports.emailVerifyStart = async (req, res, next) => {
+    try {
+        let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
+        if (!regEmail.test(req.body.email)) {
+            res.send(authResponse.EMAIL_VALIDATION_ERROR);
+            return;
+        }
+        const transporter = nodemailer.createTransport({
+            service: process.env.MAIL_SERVICE,
+            host: process.env.MAIL_HOST,
+            port: 587,
+            secure: true,
+            auth: {
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASSWORD,
+            },
+            logger: true,
+            transactionLog: true,
+        })
+        let info = await transporter.sendMail({
+            from: 'jsmdn',
+            to: "kimtahen@naver.com",
+            subject: "hello",
+            text: "helloworld",
+            html: "<b>helloworld</b>",
+        });
+        console.log(info);
+        res.send({msg:'hello'});
+    }
+    catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    }
 
-const logout = async (req, res, next) => {
+
+}
+exports.signup = async (req, res, next) => {
+    try {
+        
+
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    }
+}
+
+exports.logout = async (req, res, next) => {
     try {
         let token = refreshTokenExtractor(req);
         if (token) {
@@ -213,4 +260,3 @@ const logout = async (req, res, next) => {
 
 }
 
-module.exports = { dbtest, jwttest, refresh, signin, kakao_authorize, kakao_signin, logout };
