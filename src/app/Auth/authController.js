@@ -1,7 +1,6 @@
 const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 
 const authService = require('./authService');
 const authResponse = require('./authResponse');
@@ -199,43 +198,166 @@ exports.kakao_signin = async (req, res, next) => {
 }
 exports.emailVerifyStart = async (req, res, next) => {
     try {
-        let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
-        if (!regEmail.test(req.body.email)) {
-            res.send(authResponse.EMAIL_VALIDATION_ERROR);
+        let target_email = req.body.email;
+        if(!target_email){
+            res.send(authResponse.EMAIL_EMPTY);
             return;
         }
-        const transporter = nodemailer.createTransport({
-            service: process.env.MAIL_SERVICE,
-            host: process.env.MAIL_HOST,
-            port: 587,
-            secure: true,
-            auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASSWORD,
-            },
-            logger: true,
-            transactionLog: true,
-        })
-        let info = await transporter.sendMail({
-            from: 'jsmdn',
-            to: "kimtahen@naver.com",
-            subject: "hello",
-            text: "helloworld",
-            html: "<b>helloworld</b>",
-        });
-        console.log(info);
-        res.send({msg:'hello'});
+        let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
+        if (!regEmail.test(target_email)) {
+            res.send(authResponse.EMAIL_VALIDATION_FAIL);
+            return;
+        }
+
+        let user = await authService.getUserByEmail({provider:'local', email:target_email});
+        if(user){
+            console.log(user);
+            res.send(authResponse.EMAIL_EXISTS);
+            return;
+        }
+
+        let new_code = Math.floor(Math.random()*1000000);
+        if(new_code.toString().length < 6) new_code+=100000;
+
+        let ev = await authService.getEvByEmail(target_email);         
+        if(!ev){
+            await authService.createEv(target_email, new_code);
+            await authService.sendEvMail(target_email, new_code);
+        } else {
+            let {email, code, updatedAt, total_gen_per_day, isVerified} = ev;
+            let curTime = new Date();
+            let curYear = curTime.getFullYear();
+            let curMonth = curTime.getMonth();
+            let curDate = curTime.getDate();
+            let evYear = updatedAt.getFullYear();
+            let evMonth = updatedAt.getMonth();
+            let evDate = updatedAt.getDate();
+            if (evYear < curYear || evMonth < curMonth || evDate < curDate){
+                total_gen_per_day = 1;
+            } else {
+                total_gen_per_day += 1;
+            }
+
+            if (total_gen_per_day > 10){
+                res.send(authResponse.EV_VERIFICATION_COUNT_EXCEEDED);
+                return;
+            }
+            code = new_code;
+            isVerified = false;
+            updatedAt = new Date();
+            await authService.updateEv({email, code, updatedAt, total_gen_per_day, isVerified});
+            await authService.sendEvMail(target_email, new_code);
+        }
+        
+        res.status(200).json({message: 'verification code was sent'});
     }
     catch (e) {
         console.error(e);
         next({status: 500, message: 'internal server error'});
     }
 
-
 }
+exports.emailVerifyEnd = async (req,res,err) => {
+    let target_email = req.body.email;
+    let target_code = req.body.code;
+    try {
+        if(!target_email || !target_code) {
+            res.send(authResponse.EV_CREDENTIAL_EMPTY);
+            return;
+        }
+        let ev = await authService.getEvByEmail(target_email);
+        if(!ev){
+            res.send(authResponse.EV_CODE_NOT_GENERATED);
+            return;
+        }
+        if (Number(target_code) !== ev.code) {
+            res.send(authResponse.EV_CODE_NOT_MATCH);
+            return;
+        }
+        if ((new Date().getTime() - ev.updatedAt.getTime()) / (1000*60) > 1){
+            res.send(authResponse.EV_VERIFICATION_TIMEOUT);
+            return;
+        }
+        
+        const ev_token = jwt.sign({ email: target_email }, process.env.JWT_KEY, { expiresIn: '5m' });
+        res.cookie('ev_token', ev_token, {
+            httpOnly: true,
+            path: '/auth/signup',
+        });
+
+        await authService.updateEv({email: target_email, isVerified: true}); 
+
+        res.status(200).json({message: 'your ev_token is generated'});
+        
+
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    }
+    
+}
+
+const evTokenExtractor = (req) => {
+    let token = null;
+    if (req && req.cookies && (req.cookies['ev_token'] != "")) token = req.cookies['ev_token'];
+    return token;
+};
 exports.signup = async (req, res, next) => {
     try {
+        let payload;
+        let ev_token = evTokenExtractor(req);
+        if(!ev_token) {
+            res.send(authResponse.EV_TOKEN_EMPTY);
+            return;
+        }
+        try {
+            payload = jwt.verify(ev_token, process.env.JWT_KEY);
+        } catch (e) {
+            if (e.name == "JsonWebTokenError") {
+                res.send(authResponse.EV_TOKEN_VERIFICATION_FAIL);
+                return;
+            }
+            if (e.name == "TokenExpiredError") {
+                res.send(authResponse.EV_TOKEN_EXPIRED);
+                return;
+            }
+            next({ status: 500, message: 'internal server error' });
+            return;
+        }
+
+        let ev = await authService.getEvByEmail(payload.email);
+        if(!ev || !ev.isVerified){
+            res.send(authResponse.EV_VERIFICATION_FAIL);
+        }
+
+        //password, nickname 검증 추가하기
+        let password = req.body.password;
+        let nickname = req.body.nickname; 
+        if(!password){
+            res.send(authResponse.PASSWORD_VALIDATION_FAIL);
+            return;
+        }    
+        if(!nickname){
+            res.send(authResponse.NICKNAME_VALIDATION_FAIL);
+            return;
+        }
+
+        let salt = await authService.createSalt();
+        let hashPassword = await authService.hashPassword(salt, password);
+
+        let user = await userService.createUser({
+            provider: 'local',
+            email: payload.email,
+            password: hashPassword,
+            salt: salt,
+            status: 'run',
+            account_details_saved: true,
+            nickname: nickname,
+        });
+
+        console.log(user);
         
+        res.status(200).json({message: "registration success"});
 
     } catch (e) {
         console.error(e);

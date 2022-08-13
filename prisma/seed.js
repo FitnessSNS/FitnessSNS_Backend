@@ -6,50 +6,21 @@ const load = async () => {
         let user;
         user = await prisma.user.create({
             data: {
-                email: "user1@gmail.com",
+                email: "kimtahen@naver.com",
                 provider: "local",
-                password: "password1",
+                password: "ccrM00ZvMBRRH+z9Equy93Od/Zmoj6t3QyYNb0V5Ck9Nxx0HqjS0iFLJDMfzAdj6GT4at6voMuGE1oFvt0fz/w==",
+                salt: "1L03/JTZH++5VTd+Plq+GmLzCXAOAVMsSWqNWJHghaGS9iOqIGLnsxwOzGhovrHfVKcBygUUvZsKmArQOqbsUg==",
                 status: "run",
                 account_details_saved: true,
                 UserProfile: {
                     create: {
-                        nickname: "nicknameofuser1"
+                        nickname: "kimtaehyeon"
                     }
                 }
                 
             }
         });
         console.log("user1 created",user);
-
-        user = await prisma.user.create({
-            data: {
-                email: "user2@naver.com",
-                provider: "local",
-                status: "run",
-                account_details_saved: false,
-            }
-        })
-        console.log("user2 created",user);
-
-        userProfile = await prisma.userProfile.create({
-            data: {
-                nickname: "nicknameofuser2",
-                user: {
-                    connect: {
-                        id: 2,
-                    }
-                }
-            }
-        })
-        await prisma.user.update({
-            where: {
-                id: 2,
-            },
-            data: {
-                account_details_saved: true,
-            }
-        })
-        console.log("user2 profile created");
         
     } catch (e) {
         console.error(e);

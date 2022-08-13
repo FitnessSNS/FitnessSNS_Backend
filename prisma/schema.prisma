@@ -17,6 +17,7 @@ model User {
   provider_id           String?
   email                 String //@db.VarChar(100)
   password              String? //@db.Text 
+  salt                  String? //@db.Text
   createdAt             DateTime     @default(now())
   upadtedAt             DateTime     @updatedAt
   status                String // run | paused | deleted
@@ -41,4 +42,13 @@ model Session {
   refresh_token String
   user          User   @relation(fields: [userId], references: [id])
   userId        Int    @unique
+}
+
+model Ev {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique //@db.VarChar(100)
+  code              Int
+  updatedAt         DateTime @default(now())
+  total_gen_per_day Int      @default(1)
+  isVerified        Boolean  @default(false)
 }
