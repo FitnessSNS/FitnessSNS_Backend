@@ -17,28 +17,50 @@ model User {
   provider_id           String?
   email                 String //@db.VarChar(100)
   password              String? //@db.Text 
-  createdAt             DateTime     @default(now())
-  upadtedAt             DateTime     @updatedAt
-  status                String // run | paused | deleted
   account_details_saved Boolean      @default(false) //@db.Bit
   UserProfile           UserProfile?
   Session               Session?
+  createdAt             DateTime     @default(now())
+  upadtedAt             DateTime     @updatedAt
+  status                String // RUN / PAUSED / DELETED
+  Reward                Reward[]
 
   @@unique([provider, provider_id])
   @@unique([provider, email])
 }
 
 model UserProfile {
-  id       Int    @id @default(autoincrement())
-  nickname String @unique //@db.VarChar(20)
-  user     User   @relation(fields: [userId], references: [id])
-  userId   Int    @unique
+  id        Int      @id @default(autoincrement())
+  nickname  String   @unique //@db.VarChar(20)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  upadtedAt DateTime @updatedAt
+  status    String // RUN / PAUSED / DELETED
 }
 
 model Session {
-  id            Int    @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   ip            String
   refresh_token String
-  user          User   @relation(fields: [userId], references: [id])
-  userId        Int    @unique
+  user          User     @relation(fields: [userId], references: [id])
+  userId        Int      @unique
+  createdAt     DateTime @default(now())
+  upadtedAt     DateTime @updatedAt
+  status        String // RUN / PAUSED / DELETED
 }
+
+model Reward {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  point     Int      @default(0)
+  reason    String
+  createdAt DateTime @default(now())
+  upadtedAt DateTime @updatedAt
+  status    String // RUN / PAUSED / DELETED
+}
+
+// model ExerciseLocation {
+
+// }
