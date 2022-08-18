@@ -4,6 +4,10 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const methodOverride = require('method-override');
 const cors = require('cors');
+const {logger} = require("./config/winston");
+
+// process.env 불러오기
+require('dotenv').config();
 
 //const db = require('./config/db/index');
 
@@ -22,7 +26,7 @@ const whiteList = ["http://localhost:8080",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:5555",
-    "https://www.mopet.co.kr",
+    "https://www.sosocamp.shop",
 ];
 
 const corsOptions = {
@@ -54,29 +58,34 @@ app.use('/auth', auth);
 
 
 // ------- Routing -------
-//require('./src/app/User/userRoute')(app);
-
+require('./src/app/Reward/rewardRoute')(app);
 
 
 // ------- GLOBAL ERROR -------
 //404 error handling
 app.use(function(req, res, next) {
-    console.log('404');
-    next({status: 404, message: 'page not found'}); //404 error handling
+    const error = {
+        status: 404,
+        message: 'Page Not Found'
+    }
+    
+    next(error);
 });
 
-app.use(function(err, req, res, next) {
-    console.log('global error', err);
-    res.status(err.status).json({message: err.message}); 
+// 404 error로 대체
+app.use(function(error, req, res, next) {
+    logger.error(`Global error\n: ${error.message} \n${JSON.stringify(error)}`);
+    
+    res.status(error.status).json({message: error.message});
 });
 
-//db connection
 /*
+//db connection
 db.sequelize
     .authenticate()
     .then(() => { console.log('connected database') })
     .catch((err) => { console.error(err) });
-    */
+*/
 
 // listen 시작
 app.listen(port, '0.0.0.0', () => {

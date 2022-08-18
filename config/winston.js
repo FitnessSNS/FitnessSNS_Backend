@@ -2,17 +2,16 @@ const {createLogger, format, transports} = require('winston');
 const winstonDaily = require('winston-daily-rotate-file');
 const fs = require('fs');
 
-const env = process.env.NODE_ENV || 'development';
 const logDir = 'log';
 
-// Create the log directory if it does not exist
 if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir)
 }
 
+// debugging log
 const dailyRotateFileTransport = new transports.DailyRotateFile({
     level: 'debug',
-    filename: `${logDir}/%DATE%.log`,
+    filename: `${logDir}/%DATE%-smart-push.log`,
     datePattern: 'YYYY-MM-DD',
     zippedArchive: true,
     maxSize: '20m',
@@ -20,12 +19,10 @@ const dailyRotateFileTransport = new transports.DailyRotateFile({
 });
 
 const logger = createLogger({
-    level: env === 'development' ? 'debug' : 'info',
     format: format.combine(
         format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss'
         }),
-        format.label({ label: 'Server Log' }),
         format.json()
     ),
     transports: [
@@ -38,19 +35,16 @@ const logger = createLogger({
                 )
             )
         }),
-        dailyRotateFileTransport
-    ]
-    // uncaughtException Error Catch
-    /*exceptionHandlers: [
         new winstonDaily({
             level: 'error',
-            timestamp: 'YYYY-MM-DD HH:mm:ss',
-            dirname: logDir,
-            filename: `%DATE%.exception.log`,
+            datePattern: 'YYYY-MM-DD',
+            dirname: logDir + '/error',
+            filename: `%DATE%.error.log`,
             maxFiles: 30,
             zippedArchive: true
-        })
-    ]*/
+        }),
+        dailyRotateFileTransport
+    ]
 });
 
 module.exports = {

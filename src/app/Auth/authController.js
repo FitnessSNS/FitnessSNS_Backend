@@ -5,11 +5,13 @@ const jwt = require('jsonwebtoken');
 const authService = require('./authService');
 const authResponse = require('./authResponse');
 const userService = require('../User/userService');
+const {logger} = require('../../../config/winston');
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-require('dotenv').config();
+// index.js에 설정
+// require('dotenv').config();
 
 
 exports.dbtest = async (req, res, next) => {
@@ -129,16 +131,19 @@ exports.signin = async (req, res, next) => {
                 }
 
                 await token_generator(req, res, user);
+                
                 res.status(200).json({ message: "your token was generated" });
-
             } catch (e) {
                 console.error(e);
-                next({ status: 500, message: 'internal server error' });
+                logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
+                next({ status: 500, message: 'passport-local service error' });
             }
         })(req, res);
 
     } catch (e) {
         console.error(e);
+        // TODO: 에러 발생 부분에 log 추가
+        logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
         next({ status: 500, message: 'internal server error' });
     }
 }
