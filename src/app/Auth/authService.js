@@ -136,7 +136,7 @@ exports.createEv = async (email, code) => {
         throw e;
     }
 }
-exports.updateEv  = async ({email, code, updatedAt, total_gen_per_day, isVerified}) => {
+exports.updateEv  = async ({email, code, updated_at, total_gen_per_day, isVerified}) => {
     try {
         if(!email) throw {message: 'target email not entered'};
         await prisma.ev.updateMany({
@@ -145,7 +145,7 @@ exports.updateEv  = async ({email, code, updatedAt, total_gen_per_day, isVerifie
             },
             data: {
                 code,
-                updatedAt,
+                updated_at,
                 total_gen_per_day,
                 isVerified,
             }
