@@ -22,7 +22,7 @@ exports.createSession = async (user_id, refresh_token, ip) => {
             data: {
                 refresh_token,
                 ip,
-                userId: user_id
+                user_id
             }
         });
     } catch (e) {
@@ -43,7 +43,7 @@ exports.getSessionByToken = async (refresh_token) => {
 
 exports.getSessionByUserId = async (user_id) => {
     try {
-        const session = await prisma.session.findFirst({ where: { userId: user_id } });
+        const session = await prisma.session.findFirst({ where: { user_id } });
         return { session };
     } catch (e) {
         console.log(e);

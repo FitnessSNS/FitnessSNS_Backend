@@ -122,7 +122,7 @@ CREATE TABLE `Reward` (
 CREATE TABLE `Session` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `user_id` INTEGER NOT NULL,
-    `request_token` TEXT NOT NULL,
+    `refresh_token` TEXT NOT NULL,
     `ip` TEXT NOT NULL,
     `created_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `updated_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
