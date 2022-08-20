@@ -3,7 +3,9 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 
 const authService = require('./authService');
-const authResponse = require('./authResponse');
+
+const baseResponse = require('../../../config/baseResponseStatus');
+const {response, errResponse} = require('../../../config/response');
 const userService = require('../User/userService');
 const {logger} = require('../../../config/winston');
 
@@ -12,7 +14,6 @@ const prisma = new PrismaClient();
 
 // index.js에 설정
 // require('dotenv').config();
-
 
 exports.dbtest = async (req, res, next) => {
     let users = await prisma.user.findMany();
@@ -41,7 +42,7 @@ exports.refresh = async (req, res, next) => {
     try {
         let token = refreshTokenExtractor(req);
         if (token === null || token === undefined) {
-            res.send(authResponse.REFRESH_TOKEN_EMPTY);
+            res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
             return;
         }
 
@@ -49,12 +50,12 @@ exports.refresh = async (req, res, next) => {
             jwt.verify(token, process.env.JWT_KEY);
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(authResponse.REFRESH_TOKEN_VERIFICATION_FAIL);
+                res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {
                 await authService.deleteSession(token);
-                res.send(authResponse.REFRESH_TOKEN_EXPIRED);
+                res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
                 return;
             }
             next({ status: 500, message: 'internal server error' });
@@ -78,10 +79,10 @@ exports.refresh = async (req, res, next) => {
             }
             else {
                 await authService.deleteSession(session.refresh_token);
-                res.send(authResponse.IP_CHANGE_ERROR);
+                res.send(errResponse(baseResponse.IP_CHANGE_ERROR));
             }
         } else {
-            res.send(authResponse.SESSION_EXPIRED);
+            res.send(errResponse(baseResponse.SESSION_EXPIRED));
         }
     } catch (e) {
         console.error(e);
@@ -126,7 +127,7 @@ exports.signin = async (req, res, next) => {
                     return;
                 }
                 if (!user) {
-                    res.send(authResponse.USER_VALIDATION_FAILURE);
+                    res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
                     return;
                 }
 
@@ -205,19 +206,19 @@ exports.emailVerifyStart = async (req, res, next) => {
     try {
         let target_email = req.body.email;
         if(!target_email){
-            res.send(authResponse.EMAIL_EMPTY);
+            res.send(errResponse(baseResponse.EMAIL_EMPTY));
             return;
         }
         let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
         if (!regEmail.test(target_email)) {
-            res.send(authResponse.EMAIL_VALIDATION_FAIL);
+            res.send(errResponse(baseResponse.EMAIL_VALIDATION_FAIL));
             return;
         }
 
         let user = await authService.getUserByEmail({provider:'local', email:target_email});
         if(user){
             console.log(user);
-            res.send(authResponse.EMAIL_EXISTS);
+            res.send(errResponse(baseResponse.EMAIL_EXISTS));
             return;
         }
 
@@ -229,14 +230,14 @@ exports.emailVerifyStart = async (req, res, next) => {
             await authService.createEv(target_email, new_code);
             await authService.sendEvMail(target_email, new_code);
         } else {
-            let {email, code, updatedAt, total_gen_per_day, isVerified} = ev;
+            let {email, code, updated_at, total_gen_per_day, isVerified} = ev;
             let curTime = new Date();
             let curYear = curTime.getFullYear();
             let curMonth = curTime.getMonth();
             let curDate = curTime.getDate();
-            let evYear = updatedAt.getFullYear();
-            let evMonth = updatedAt.getMonth();
-            let evDate = updatedAt.getDate();
+            let evYear = updated_at.getFullYear();
+            let evMonth = updated_at.getMonth();
+            let evDate = updated_at.getDate();
             if (evYear < curYear || evMonth < curMonth || evDate < curDate){
                 total_gen_per_day = 1;
             } else {
@@ -244,13 +245,14 @@ exports.emailVerifyStart = async (req, res, next) => {
             }
 
             if (total_gen_per_day > 10){
-                res.send(authResponse.EV_VERIFICATION_COUNT_EXCEEDED);
+                res.send(errResponse(baseResponse.EV_VERIFICATION_COUNT_EXCEEDED));
                 return;
             }
             code = new_code;
             isVerified = false;
-            updatedAt = new Date();
-            await authService.updateEv({email, code, updatedAt, total_gen_per_day, isVerified});
+            updated_at = new Date();
+            console.log(updated_at);
+            await authService.updateEv({email, code, updated_at, total_gen_per_day, isVerified});
             await authService.sendEvMail(target_email, new_code);
         }
         
@@ -267,20 +269,20 @@ exports.emailVerifyEnd = async (req,res,err) => {
     let target_code = req.body.code;
     try {
         if(!target_email || !target_code) {
-            res.send(authResponse.EV_CREDENTIAL_EMPTY);
+            res.send(errResponse(baseResponse.EV_CREDENTIAL_EMPTY));
             return;
         }
         let ev = await authService.getEvByEmail(target_email);
         if(!ev){
-            res.send(authResponse.EV_CODE_NOT_GENERATED);
+            res.send(errResponse(baseResponse.EV_CODE_NOT_GENERATED));
             return;
         }
         if (Number(target_code) !== ev.code) {
-            res.send(authResponse.EV_CODE_NOT_MATCH);
+            res.send(errResponse(baseResponse.EV_CODE_NOT_MATCH));
             return;
         }
-        if ((new Date().getTime() - ev.updatedAt.getTime()) / (1000*60) > 1){
-            res.send(authResponse.EV_VERIFICATION_TIMEOUT);
+        if ((new Date().getTime() - ev.updated_at.getTime()) / (1000*60) > 1){
+            res.send(errResponse(baseResponse.EV_VERIFICATION_TIMEOUT));
             return;
         }
         
@@ -312,18 +314,18 @@ exports.signup = async (req, res, next) => {
         let payload;
         let ev_token = evTokenExtractor(req);
         if(!ev_token) {
-            res.send(authResponse.EV_TOKEN_EMPTY);
+            res.send(errResponse(baseResponse.EV_TOKEN_EMPTY));
             return;
         }
         try {
             payload = jwt.verify(ev_token, process.env.JWT_KEY);
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(authResponse.EV_TOKEN_VERIFICATION_FAIL);
+                res.send(errResponse(baseResponse.EV_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {
-                res.send(authResponse.EV_TOKEN_EXPIRED);
+                res.send(errResponse(baseResponse.EV_TOKEN_EXPIRED));
                 return;
             }
             next({ status: 500, message: 'internal server error' });
@@ -332,18 +334,18 @@ exports.signup = async (req, res, next) => {
 
         let ev = await authService.getEvByEmail(payload.email);
         if(!ev || !ev.isVerified){
-            res.send(authResponse.EV_VERIFICATION_FAIL);
+            res.send(errResponse(baseResponse.EV_VERIFICATION_FAIL));
         }
 
         //password, nickname 검증 추가하기
         let password = req.body.password;
         let nickname = req.body.nickname; 
         if(!password){
-            res.send(authResponse.PASSWORD_VALIDATION_FAIL);
+            res.send(errResponse(baseResponse.PASSWORD_VALIDATION_FAIL));
             return;
         }    
         if(!nickname){
-            res.send(authResponse.NICKNAME_VALIDATION_FAIL);
+            res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
             return;
         }
 

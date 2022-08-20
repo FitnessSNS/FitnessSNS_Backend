@@ -1,6 +1,5 @@
 generator client {
-  provider  = "prisma-client-js"
-  generator = "./gerated/testClient"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -120,41 +119,35 @@ model Reward {
 }
 
 model Session {
-  id                            Int      @id @default(autoincrement())
-  user_id                       Int
-  request_token                 String   @db.VarChar(100)
-  ip                            String   @db.VarChar(15)
-  created_at                    DateTime @default(now()) @db.DateTime(0)
-  updated_at                    DateTime @default(now()) @db.DateTime(0)
-  status                        String   @default("RUN") @db.VarChar(10)
-  User_Session_user_idToUser    User     @relation("Session_user_idToUser", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_Session_1")
-  User_SessionToUser_session_id User[]   @relation("SessionToUser_session_id")
-
-  @@index([user_id], map: "FK_User_TO_Session_1")
+  id            Int      @id @default(autoincrement())
+  user_id       Int      @unique
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  request_token String   @db.Text
+  ip            String   @db.Text
+  created_at    DateTime @default(now()) @db.DateTime(0)
+  updated_at    DateTime @default(now()) @db.DateTime(0)
 }
 
 model User {
-  id                                       Int                @id @default(autoincrement())
-  profile_id                               Int?
-  session_id                               Int?
-  provider                                 Int?
-  email                                    String             @db.VarChar(50)
-  password                                 String?            @db.Text
-  account_details_saved                    Boolean            @default(false)
-  created_at                               DateTime           @default(now()) @db.DateTime(0)
-  updated_at                               DateTime           @default(now()) @db.DateTime(0)
-  status                                   String             @default("RUN") @db.VarChar(10)
-  Session_SessionToUser_session_id         Session?           @relation("SessionToUser_session_id", fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Session_TO_User_1")
-  UserProfile_User_profile_idToUserProfile UserProfile?       @relation("User_profile_idToUserProfile", fields: [profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_UserProfile_TO_User_1")
-  Distance                                 Distance[]
-  ExerciseLocation                         ExerciseLocation[]
-  Reward                                   Reward[]
-  Session_Session_user_idToUser            Session[]          @relation("Session_user_idToUser")
-  UserChallenge                            UserChallenge[]
-  UserProfile_UserToUserProfile_user_id    UserProfile[]      @relation("UserToUserProfile_user_id")
+  id                    Int                @id @default(autoincrement())
+  provider              String
+  provider_id           String?
+  email                 String             @db.VarChar(50)
+  password              String?            @db.Text
+  salt                  String?            @db.Text
+  account_details_saved Boolean            @default(false)
+  created_at            DateTime           @default(now()) @db.DateTime(0)
+  updated_at            DateTime           @default(now()) @db.DateTime(0)
+  status                String             @default("RUN") @db.VarChar(10)
+  Distance              Distance[]
+  ExerciseLocation      ExerciseLocation[]
+  Reward                Reward[]
+  UserChallenge         UserChallenge[]
+  Session               Session[]
+  UserProfile           UserProfile[]
 
-  @@index([session_id], map: "FK_Session_TO_User_1")
-  @@index([profile_id], map: "FK_UserProfile_TO_User_1")
+  @@unique([provider, provider_id])
+  @@unique([provider, email])
 }
 
 model UserChallenge {
@@ -174,14 +167,19 @@ model UserChallenge {
 }
 
 model UserProfile {
-  id                                Int      @id @default(autoincrement())
-  user_id                           Int
-  nickname                          String   @db.VarChar(20)
-  created_at                        DateTime @default(now()) @db.DateTime(0)
-  updated_at                        DateTime @default(now()) @db.DateTime(0)
-  Field3                            String   @default("RUN") @db.VarChar(255)
-  User_UserToUserProfile_user_id    User     @relation("UserToUserProfile_user_id", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_UserProfile_1")
-  User_User_profile_idToUserProfile User[]   @relation("User_profile_idToUserProfile")
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  nickname   String   @db.VarChar(20)
+  created_at DateTime @default(now()) @db.DateTime(0)
+  updated_at DateTime @default(now()) @db.DateTime(0)
+}
 
-  @@index([user_id], map: "FK_User_TO_UserProfile_1")
+model Ev {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique @db.VarChar(50)
+  code              Int
+  updated_at        DateTime @default(now()) @db.DateTime(0)
+  total_gen_per_day Int      @default(1)
+  isVerified        Boolean  @default(false)
 }

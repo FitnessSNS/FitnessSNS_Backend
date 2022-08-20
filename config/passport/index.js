@@ -27,7 +27,7 @@ const localVerify =  async (email, password, done) => {
             done(null, false, {message: "password not same"});
         }
     } catch (e) {
-        console.error(e);
+        console.log(e);
         done(e);
     }
 }
