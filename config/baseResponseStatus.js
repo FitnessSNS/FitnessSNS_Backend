@@ -25,17 +25,19 @@ module.exports = {
     EMAIL_VALIDATION_FAIL: {isSuccess: false, code: 1301, message: "email condition does not match"},
 
     // EvStart
-    EMAIL_EXISTS: {isSuccess: false, code: 1400, message: "email already registered"},
     EV_VERIFICATION_COUNT_EXCEEDED: {isSuccess: false, code: 1401, message: "verification count per day exceeded"},
     // EvEnd
     EV_CREDENTIAL_EMPTY: {isSuccess: false, code: 1401, message: "email or code is empty"},
     EV_CODE_NOT_MATCH: {isSuccess: false, code: 1402, message: "code is not same"},
     EV_CODE_NOT_GENERATED: {isSuccess: false, code: 1403, message: "email verification code is not generated"},
     EV_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1404, message: "email verification code is outdated"},
+    EV_USER_EXIST: {isSuccess: false, code: 1405, message: "user already registered"},
     // SignUp
-    PASSWORD_VALIDATION_FAIL: {isSuccess: false, code: 1500, message: "password condition does not match"},
-    NICKNAME_VALIDATION_FAIL: {isSuccess: false, code: 1501, message: "nickname condition does not match"},
-    EV_VERIFICATION_FAIL: {isSuccess: false, code: 1502, message: "email verification process failed"},
+    PASSWORD_EMPTY: {isSuccess: false, code: 1500, message: "password is empty"},
+    NICKNAME_EMPTY: {isSuccess: false, code: 1501, message: "nickname is empty"},
+    PASSWORD_VALIDATION_FAIL: {isSuccess: false, code: 1510, message: "password condition does not match"},
+    NICKNAME_VALIDATION_FAIL: {isSuccess: false, code: 1511, message: "nickname condition does not match"},
+    EV_VERIFICATION_FAIL: {isSuccess: false, code: 1520, message: "email verification process failed"},
 
     // User
     USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "user validation failed" },

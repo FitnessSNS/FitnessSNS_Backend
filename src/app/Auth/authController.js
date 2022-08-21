@@ -189,7 +189,7 @@ exports.kakao_signin = async (req, res, next) => {
                 provider_id: kakao_user.data.id,
                 email: kakao_user.data.kakao_account.email, 
                 status: 'run',
-                account_details_saved: true,
+                account_details_saved: false,
                 nickname: kakao_user.data.kakao_account.profile.nickname,
             });
         }
@@ -212,13 +212,6 @@ exports.emailVerifyStart = async (req, res, next) => {
         let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
         if (!regEmail.test(target_email)) {
             res.send(errResponse(baseResponse.EMAIL_VALIDATION_FAIL));
-            return;
-        }
-
-        let user = await authService.getUserByEmail({provider:'local', email:target_email});
-        if(user){
-            console.log(user);
-            res.send(errResponse(baseResponse.EMAIL_EXISTS));
             return;
         }
 
@@ -285,6 +278,11 @@ exports.emailVerifyEnd = async (req,res,err) => {
             res.send(errResponse(baseResponse.EV_VERIFICATION_TIMEOUT));
             return;
         }
+        let user = await authService.getUserByEmail({provider:'local', email:target_email});
+        if(user){
+            res.send(errResponse(baseResponse.EV_USER_EXIST));
+            return;
+        }
         
         const ev_token = jwt.sign({ email: target_email }, process.env.JWT_KEY, { expiresIn: '5m' });
         res.cookie('ev_token', ev_token, {
@@ -302,6 +300,25 @@ exports.emailVerifyEnd = async (req,res,err) => {
         next({status: 500, message: 'internal server error'});
     }
     
+}
+
+exports.nicknameVerify = async (req, res, err) => {
+    let target_nickname = req.body.nickname;
+    try {
+        if(!target_nickname) {
+            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
+        }
+        let nnRegex = /^[A-Za-z\d]{4,12}$/;
+        if(!nnRegex.test(nickname)){
+            res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
+        }
+        res.send(response(baseResponse.SUCCESS));
+        
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    }
+     
 }
 
 const evTokenExtractor = (req) => {
@@ -335,16 +352,27 @@ exports.signup = async (req, res, next) => {
         let ev = await authService.getEvByEmail(payload.email);
         if(!ev || !ev.isVerified){
             res.send(errResponse(baseResponse.EV_VERIFICATION_FAIL));
+            return;
         }
 
         //password, nickname 검증 추가하기
         let password = req.body.password;
         let nickname = req.body.nickname; 
         if(!password){
-            res.send(errResponse(baseResponse.PASSWORD_VALIDATION_FAIL));
+            res.send(errResponse(baseResponse.PASSWORD_EMPTY));
             return;
         }    
         if(!nickname){
+            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
+            return;
+        }
+        let pwRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()\-_+=~`])[A-Za-z\d!@#$%^&*()\-_+=~`]{8,20}$/;
+        let nnRegex = /^[A-Za-z\d]{4,12}$/;
+        if(!pwRegex.test(password)){
+            res.send(errResponse(baseResponse.PASSWORD_VALIDATION_FAIL));
+            return;
+        }
+        if(!nnRegex.test(nickname)){
             res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
             return;
         }
@@ -361,8 +389,6 @@ exports.signup = async (req, res, next) => {
             account_details_saved: true,
             nickname: nickname,
         });
-
-        console.log(user);
         
         res.status(200).json({message: "registration success"});
 

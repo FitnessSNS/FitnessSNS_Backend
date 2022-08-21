@@ -86,7 +86,6 @@ exports.getUserByEmail = async ({provider, email}) => {
                 email 
             },
         });
-        console.log(email);
         return user;
     } catch (e) {
         console.log(e);
