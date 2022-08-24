@@ -148,6 +148,58 @@ exports.signin = async (req, res, next) => {
         next({ status: 500, message: 'internal server error' });
     }
 }
+//oauth common
+exports.add_info = async (req, res, next) => {
+    res.render('addinfo');
+}
+const accessTokenExtractor = (req)=>{
+    let token = null;
+    if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
+    return token;
+};
+exports.add_account_details = async (req, res, next) => {
+    let target_nickname = req.body.nickname;
+    try {
+        if(!target_nickname) {
+            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
+        }
+        let token = accessTokenExtractor(req);
+        if(token === null || token === undefined){
+            res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
+            return;
+        }
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_KEY); 
+        } catch (e) {
+            if (e.name == "JsonWebTokenError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                return;
+            }
+            if (e.name == "TokenExpiredError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
+                return;
+            }
+            next({ status: 500, message: 'internal server error' });
+            return;
+        }
+
+        let user = await authService.getUserByEmail({provider: decoded.provider, email: decoded.email});
+        if(!user){
+            res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
+            return;
+        }
+        if(user.account_details_saved){
+            res.send(errResponse(baseResponse.ACCOUNT_DETAILS_SAVED)); 
+            return;
+        }
+        await userService.addAccountDetails({provider: user.provider, email: user.email, nickname: target_nickname});
+        res.send(response(baseResponse.SUCCESS));
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    } 
+}
 
 //kakao oauth
 exports.kakao_authorize = async (req, res, next) => {
@@ -196,7 +248,7 @@ exports.kakao_signin = async (req, res, next) => {
 
         token_generator(req, res, user);
 
-        res.status(200).json({message: "your token was generated"});
+        res.send(response(baseResponse.SUCCESS));
         
     } catch (e){
         next({status: 500, message: 'internal server error'});
@@ -302,18 +354,20 @@ exports.emailVerifyEnd = async (req,res,err) => {
     
 }
 
-exports.nicknameVerify = async (req, res, err) => {
+exports.nicknameVerify = async (req, res, next) => {
     let target_nickname = req.body.nickname;
     try {
         if(!target_nickname) {
             res.send(errResponse(baseResponse.NICKNAME_EMPTY));
+            return;
         }
-        let nnRegex = /^[A-Za-z\d]{4,12}$/;
-        if(!nnRegex.test(nickname)){
+        let nnRegex = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]{4,12}$/;
+        if(!nnRegex.test(target_nickname)){
             res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
+            return;
         }
         res.send(response(baseResponse.SUCCESS));
-        
+        return; 
     } catch (e) {
         console.error(e);
         next({status: 500, message: 'internal server error'});
@@ -367,7 +421,7 @@ exports.signup = async (req, res, next) => {
             return;
         }
         let pwRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()\-_+=~`])[A-Za-z\d!@#$%^&*()\-_+=~`]{8,20}$/;
-        let nnRegex = /^[A-Za-z\d]{4,12}$/;
+        let nnRegex = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]{4,12}$/;
         if(!pwRegex.test(password)){
             res.send(errResponse(baseResponse.PASSWORD_VALIDATION_FAIL));
             return;

@@ -143,8 +143,8 @@ model User {
   ExerciseLocation      ExerciseLocation[]
   Reward                Reward[]
   UserChallenge         UserChallenge[]
-  Session               Session[]
-  UserProfile           UserProfile[]
+  Session               Session?
+  UserProfile           UserProfile?
 
   @@unique([provider, provider_id])
   @@unique([provider, email])
@@ -179,6 +179,7 @@ model Ev {
   id                Int      @id @default(autoincrement())
   email             String   @unique @db.VarChar(50)
   code              Int
+  created_at        DateTime @default(now()) @db.DateTime(0)
   updated_at        DateTime @default(now()) @db.DateTime(0)
   total_gen_per_day Int      @default(1)
   isVerified        Boolean  @default(false)

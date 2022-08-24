@@ -32,6 +32,7 @@ module.exports = {
     EV_CODE_NOT_GENERATED: {isSuccess: false, code: 1403, message: "email verification code is not generated"},
     EV_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1404, message: "email verification code is outdated"},
     EV_USER_EXIST: {isSuccess: false, code: 1405, message: "user already registered"},
+
     // SignUp
     PASSWORD_EMPTY: {isSuccess: false, code: 1500, message: "password is empty"},
     NICKNAME_EMPTY: {isSuccess: false, code: 1501, message: "nickname is empty"},
@@ -41,6 +42,7 @@ module.exports = {
 
     // User
     USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "user validation failed" },
+    ACCOUNT_DETAILS_SAVED: {isSuccess: false, code: 2001, message: "account details already saved"},
 
     // Reward
     CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "challenge cannot found" },

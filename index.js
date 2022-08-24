@@ -39,6 +39,8 @@ const corsOptions = {
     }
 };
 
+app.set('view engine', 'ejs')
+
 app.use(compression());
 
 app.use(express.json());

@@ -5,9 +5,13 @@ const {authenticate} = require("../../middleware/auth");
 
 router.get('/dbtest', authController.dbtest);
 router.get('/jwttest', authenticate, authController.jwttest);
+router.get('/addinfotest', authController.add_info);
 
 //jwt routes
 router.post('/common/refresh', authController.refresh);
+
+//oauth routes
+router.post('/oauth/addinfo', authController.add_account_details)
 
 //sign in routes
 router.post('/signin', authController.signin);
