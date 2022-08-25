@@ -10,7 +10,7 @@ exports.createUser = async ({provider, provider_id, email, password, salt, statu
                 password : password ? password : null,
                 salt: salt ? salt : null,
                 status: status ? status : null,
-                account_details_saved: account_details_saved ? account_details_saved : null,
+                account_details_saved: account_details_saved ? account_details_saved : false,
                 UserProfile: {
                     create: {
                         nickname: nickname ? nickname : null,
@@ -24,3 +24,26 @@ exports.createUser = async ({provider, provider_id, email, password, salt, statu
         throw e;
     }
 }
+
+exports.addAccountDetails = async ({provider, email, nickname}) => {
+    try {
+        return await prisma.user.updateMany({
+            where: {
+                provider,
+                email,
+            },
+            data: {
+                account_details_saved: true,
+                UserProfile: {
+                    updateMany: {
+                        nickname,
+                    }
+                }
+            }
+        })
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
+}
+
