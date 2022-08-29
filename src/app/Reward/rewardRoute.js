@@ -6,4 +6,7 @@ module.exports = function (app) {
     app.route('/rewards/challenge')
         .get(reward.getChallenge)
         .post(reward.postChallenge);
+    
+    // 리워드 페이지 접속
+    app.route('/rewards/users').get(authenticate, reward.getUserInfo);
 }

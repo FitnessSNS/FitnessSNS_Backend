@@ -2,7 +2,6 @@ const rewardService = require('./rewardService');
 const rewardProvider = require('./rewardProvider');
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
-const {BIGINT} = require("sequelize");
 
 /** 챌린지 확인 API
  * [GET] /app/rewards/challenge
@@ -30,4 +29,15 @@ exports.postChallenge = async function (req, res) {
     const postChallengeResult = await rewardService.createChallenge(title, content, condition, end_date)
     
     return res.send(postChallengeResult);
+};
+
+/** 리워드 페이지 사용자 정보 API
+ * [GET] /app/rewards/users
+ */
+exports.getUserInfo = async function (req, res) {
+    const { email } = req.user;
+    
+    const getUserInfoResult = await rewardProvider.retrieveUserInfo(email);
+    
+    return res.send(getUserInfoResult);
 };
