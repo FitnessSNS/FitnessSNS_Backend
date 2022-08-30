@@ -1,4 +1,4 @@
-# 생활운동 SNS API Server
+# 러닝하이 API Server
 
 Node.js API Server
 
@@ -45,59 +45,80 @@ Node.js API Server
 └── README.md
 ```
 
+<br>
+<br>
+
 ---
 ## Prisma 사용법
-현재는 prisma.schema 가 sqlite에 연결된 상태이므로 자유롭게 db수정이 가능합니다!
-
-### schema.prisma를 수정하는 경우 (ex. 테이블 추가시)
+### 1) schema.prisma를 수정하는 경우 (ex. 테이블 추가시)
 1. `npx prisma migrate dev --name "여기에 migration 설명 추가"` 입력
 2. `prisma/migrate` 폴더에 migration 생성됨
 3. `npx prisma generate`
 4. `@prisma/client`에 client 생성되어 import 해서 사용하면 됨
 
-### seeding
+### 2) seeding
 1. `prisma/seed.js`에 mock up 데이터 추가 쿼리 작성
 2. `npm run seed` 실행
 3. `prisma.schema`에 설정된 db에 row 삽입됨(만약 이미 존재하는 경우 unique 규칙에 위반되면 오류 발생)
 
-### db 초기화 후 처음부터 migration 진행
+### 3) DB 초기화 후 처음부터 migration 진행
 1. `npx prisma migrate reset`
 2. `npm run seed` 로 seeding
 
-### express.js에서 db 사용법
+### 4) DB에서 스키마 변경 후 작업
+```javascript
+// db에서 스키마 불러오기
+npx prisma db pull
+
+// prisma client에 적용
+npx prisma generate
+```
+
+### 5) express에서 prisma client 사용
 ```javascript
 const {PrismaClient} = require('@prisma/client');
 const prisma = new PrismaClient();
 ```
 
+---
+
+<br>
+<br>
+
 ## RESPONSE CODE
-`src/app/authResponse.js`
+`config/response.js`
 ```javascript
 {
-    // Token
-    ACCESS_TOKEN_EMPTY: {code: 1100, message: "access token is empty"},
-    ACCESS_TOKEN_VERFICATION_FAIL: {code: 1101, message: "access token verification failed"},
-    ACCESS_TOKEN_EXPIRED: {code: 1102, message: "access token has expired"},
-    REFRESH_TOKEN_EMPTY: {code: 1110, message: "refresh token is empty"},
-    REFRESH_TOKEN_VERIFICATION_FAIL: {code: 1111, message: "refresh token verification failed"},
-    REFRESH_TOKEN_EXPIRED: {code: 1112, message: "refresh token has expired"},
+    const response = ({isSuccess, code, message}, result) => {
+        return {
+            isSuccess: isSuccess,
+            code: code,
+            message: message,
+            result: result
+        }
+    };
     
-    // Session
-    IP_CHANGE_ERROR: {code: 1200, message: "ip has changed. please re-login"},
-    SESSION_EXPIRED: {code: 1201, message: "session expired from server"},
-
-    // User
-    USER_VALIDATION_FAILURE: {code: 2000, message: "user validation failed" },
+    const errResponse = ({isSuccess, code, message}) => {
+        return {
+            isSuccess: isSuccess,
+            code     : code,
+            message  : message
+        }
+    };
 }
 ```
 
+<br>
+<br>
+
+---
+
 ## API Connection
 
-본 서버는 생활운동 SNS 서비스에서 사용하는 API로써 역할을 함
+본 서버는 러닝하이(생활운동 앱테크) 서비스에서 사용하는 API로써 역할을 함
 
 ### Option 1: Connection Test
 
 서버 연결을 위한 API 테스트 가이드
 
 https://www.sosocamp.shop/app/test/connection 으로 POST 요청
-
