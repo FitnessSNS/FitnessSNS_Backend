@@ -33,7 +33,7 @@ exports.createSession = async (user_id, refresh_token, ip) => {
 
 exports.getSessionByToken = async (refresh_token) => {
     try {
-        const session = await prisma.session.findFirst({ where: { refresh_token }, include: { user: { select: { email: true } } } });
+        const session = await prisma.session.findFirst({ where: { refresh_token }, include: { User: { select: { email: true } } } });
         return { session };
     } catch (e) {
         console.log(e);
