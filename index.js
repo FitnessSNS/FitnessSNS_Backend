@@ -27,6 +27,7 @@ const whiteList = ["http://localhost:8080",
     "http://localhost:3001",
     "http://localhost:5555",
     "https://www.sosocamp.shop",
+    "https://sosocamp.shop"
 ];
 
 const corsOptions = {
