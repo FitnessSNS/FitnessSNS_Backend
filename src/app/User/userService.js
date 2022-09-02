@@ -27,20 +27,25 @@ exports.createUser = async ({provider, provider_id, email, password, salt, statu
 
 exports.addAccountDetails = async ({provider, email, nickname}) => {
     try {
-        return await prisma.user.updateMany({
+        let user = await prisma.user.findMany({
             where: {
                 provider,
                 email,
             },
+        });
+        await prisma.UserProfile.update({
+            where: {
+                user_id: user[0].id,
+            },
             data: {
-                account_details_saved: true,
-                UserProfile: {
-                    updateMany: {
-                        nickname,
+                nickname,
+                User: {
+                    update: {
+                        account_details_saved: true,
                     }
                 }
             }
-        })
+        });
     } catch (e) {
         console.log(e);
         throw e;
