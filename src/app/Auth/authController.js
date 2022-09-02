@@ -65,7 +65,7 @@ exports.refresh = async (req, res, next) => {
         if (session) {
             const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
             if (session.ip === ip) {
-                const access_token = jwt.sign({ email: session.user.email }, process.env.JWT_KEY, { expiresIn: '1m' });
+                const access_token = jwt.sign({ email: session.User.email }, process.env.JWT_KEY, { expiresIn: '1d' });
                 res.cookie('access_token', access_token, {
                     httpOnly: true,
                 });
@@ -93,7 +93,7 @@ exports.refresh = async (req, res, next) => {
 const token_generator = async(req, res, user) =>{
     console.log(user);
     try {
-        const access_token = jwt.sign({ provider: user.provider, email: user.email }, process.env.JWT_KEY, { expiresIn: '1m' });
+        const access_token = jwt.sign({ provider: user.provider, email: user.email }, process.env.JWT_KEY, { expiresIn: '1d' });
         res.cookie('access_token', access_token, {
             httpOnly: true,
         });

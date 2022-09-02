@@ -2,7 +2,9 @@ module.exports = {
     // Success
     SUCCESS: {"isSuccess": true, "code": 1000, "message": "성공"},
     
-    //Request error
+    // ----------------
+    // Controller error
+    // ----------------
     // Token
     ACCESS_TOKEN_EMPTY: {isSuccess: false, code: 1100, message: "access token is empty"},
     ACCESS_TOKEN_VERFICATION_FAIL: {isSuccess: false, code: 1101, message: "access token verification failed"},
@@ -43,9 +45,43 @@ module.exports = {
     // User
     USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "user validation failed" },
     ACCOUNT_DETAILS_SAVED: {isSuccess: false, code: 2001, message: "account details already saved"},
-
+    
+    // Running
+    RUNNING_START_LOCATION_EMPTY: {isSuccess: false, code: 2501, message: "Location info is empty"},
+    RUNNING_START_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2502, message: "Location type is wrong"},
+    
+    RUNNING_CHECK_RESTART_TYPE_WRONG: {isSuccess: false, code: 2511, message: "Check restart query"},
+    RUNNING_CHECK_LOCATION_EMPTY: {isSuccess: false, code: 2512, message: "Location info is empty"},
+    RUNNING_CHECK_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2513, message: "Location type is wrong"},
+    
+    
+    // ----------------
+    // Provider, Service Error
+    // ----------------
     // Reward
-    CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "challenge cannot found" },
+    CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "Challenge cannot found" },
+    
+    REWARD_USER_INFO_NOT_FOUND: {"isSuccess": false, code: 3011, message: "User info not found" },
+    REWARD_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3012, message: "User nickname not found" },
+    REWARD_MENTION_NOT_FOUND: {"isSuccess": false, code: 3013, message: "Today mention not found" },
+    REWARD_SHOPPING_LIST_NOT_FOUND: {"isSuccess": false, code: 3014, message: "Shopping list not found" },
+    REWARD_CHALLENGE_INFO_NOT_FOUND: {"isSuccess": false, code: 3015, message: "Challenge info not found" },
+    
+    REWARD_EXERCISE_USER_GROUP_CHECK: {"isSuccess": false, code: 3021, message: "This user cannot do group exercise" },
+    
+    RUNNING_USER_NOT_FOUND: {"isSuccess": false, code: 3031, message: "User info not found" },
+    RUNNING_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3032, message: "User nickname not found" },
+    
+    RUNNING_CHECK_USER_NOT_FOUND: {"isSuccess": false, code: 3041, message: "User info not found" },
+    RUNNING_CHECK_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3042, message: "User nickname not found" },
+    RUNNING_CHECK_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3043, message: "Prior location not found" },
+    RUNNING_CHECK_TIME_LESS_ZERO: {"isSuccess": false, code: 3044, message: "Exercise time is less than zero" },
+    RUNNING_CHECK_TIME_OUT: {"isSuccess": false, code: 3045, message: "Exercise time out (over 3 hours)" },
+    RUNNING_CHECK_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3046, message: "Update location error" },
+    RUNNING_CHECK_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3047, message: "Update exercise error" },
+    RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3048, message: "Exercise info not found" },
+    
+    
     
     //Connection, Transaction 등의 서버 오류
     DB_ERROR: {"isSuccess": false, "code": 9000, "message": "데이터 베이스 에러"},

@@ -1,6 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const baseResponse = require('../../../config/baseResponseStatus');
+const {response, errResponse} = require("../../../config/response");
 
+// Date to String 함수
 const getTodayTime = function (todayTime) {
     // ms 단위 절삭
     todayTime = Math.floor(todayTime / 1000);
@@ -44,6 +47,7 @@ const getTodayTime = function (todayTime) {
     return `${hourString}:${minuteString}:${secondString}`;
 }
 
+// 챌린지 정보 불러오기
 exports.retrieveChallenge = async () => {
     const challengeRows = await prisma.Challenge.findMany();
     
@@ -54,6 +58,7 @@ exports.retrieveChallenge = async () => {
     return challengeRows;
 };
 
+// 사용자 리워드 정보 불러오기
 exports.retrieveUserInfo = async (email) => {
     // const userCheck = await prisma.$exist.User({ email });
     
@@ -68,6 +73,11 @@ exports.retrieveUserInfo = async (email) => {
         }
     });
     
+    // 사용자 정보가 없을 경우 에러 발생
+    if (user.length < 1) {
+        return errResponse(baseResponse.REWARD_USER_INFO_NOT_FOUND);
+    }
+    
     // 사용자 닉네임 불러오기
     const nickname = await prisma.UserProfile.findMany({
         where: {
@@ -79,6 +89,11 @@ exports.retrieveUserInfo = async (email) => {
             nickname: true
         }
     });
+    
+    // 사용자 닉네임이 없을 경우 에러 발생
+    if (nickname.length < 1) {
+        return errResponse(baseResponse.REWARD_USER_NICKNAME_NOT_FOUND);
+    }
     
     // 사용자 리워드 정보
     const userReward = await prisma.Reward.findMany({
@@ -96,8 +111,10 @@ exports.retrieveUserInfo = async (email) => {
     
     // 리워드 포인트 총합
     let totalReward = 0;
-    for (let reward of userReward) {
-        totalReward += reward.point;
+    if (userReward.length > 0) {
+        for (let reward of userReward) {
+            totalReward += reward.point;
+        }
     }
     
     // 오늘 날짜
@@ -105,7 +122,7 @@ exports.retrieveUserInfo = async (email) => {
     today.setHours(9, 0, 0, 0);
     
     // 멘트 불러오기
-    const todayMent = await prisma.Ment.findMany({
+    const todayMention = await prisma.Mention.findMany({
         where: {
             date: {
                 equals: today
@@ -114,7 +131,12 @@ exports.retrieveUserInfo = async (email) => {
         select: {
             content: true
         }
-    })
+    });
+    
+    // 멘트가 없을 경우 에러 발생
+    if (todayMention.length < 1) {
+        return errResponse(baseResponse.REWARD_MENTION_NOT_FOUND);
+    }
     
     // 내일 날짜
     const todayYear = today.getFullYear();
@@ -145,11 +167,14 @@ exports.retrieveUserInfo = async (email) => {
     let todayDistance = 0;
     let todayTime = 0;
     let todayCalorie = 0;
-    for (let element of userExercise) {
-        todayDistance += element.distance;
-        todayTime += element.time.getTime();
-        todayCalorie += element.calorie;
+    if (userExercise.length > 0) {
+        for (let element of userExercise) {
+            todayDistance += element.distance;
+            todayTime += element.time.getTime();
+            todayCalorie += element.calorie;
+        }
     }
+    
     const timeResult = getTodayTime(todayTime);
     
     // 쇼핑 정보
@@ -166,6 +191,11 @@ exports.retrieveUserInfo = async (email) => {
             price: true
         }
     });
+    
+    // 쇼핑 정보가 없을 경우 에러 발생
+    if (shoppingList.length < 1) {
+        return errResponse(baseResponse.REWARD_SHOPPING_LIST_NOT_FOUND);
+    }
     
     // 챌린지 정보
     const userChallenge = await prisma.UserChallenge.findMany({
@@ -184,7 +214,7 @@ exports.retrieveUserInfo = async (email) => {
     
     // 진행중인 챌린지가 있을 경우
     let challengeInfo;
-    if (userChallenge[0] !== undefined) {
+    if (userChallenge.length > 0 && userChallenge[0] !== undefined) {
         challengeInfo = await prisma.Challenge.findUnique({
             where: {
                 id: userChallenge[0].challenge_id
@@ -227,12 +257,17 @@ exports.retrieveUserInfo = async (email) => {
         });
     }
     
+    // 챌린지 정보가 없을 경우 에러 발생
+    if (challengeInfo.length < 1) {
+        return errResponse(baseResponse.REWARD_CHALLENGE_INFO_NOT_FOUND);
+    }
+    
     return {
         userId: user[0].id,
         userStatus: user[0].status,
         point: totalReward,
         nickname: nickname[0].nickname,
-        ment: todayMent[0].content,
+        ment: todayMention[0].content,
         activity: {
             time_stack: timeResult,
             distance_stack: todayDistance,
@@ -241,4 +276,28 @@ exports.retrieveUserInfo = async (email) => {
         shopping: shoppingList,
         challenge: challengeInfo
     };
-}
+};
+
+// 그룹 운동 확인
+exports.retrieveUserExerciseGroup = async (email, type) => {
+    // 사용자 그룹 참가 확인
+    const userGroup = await prisma.UserGroup.findMany({
+        where: {
+            User: {
+                email: email
+            },
+            status: 'RUN'
+        },
+        select: {
+            id: true,
+            group_id: true,
+        }
+    });
+    
+    // 그룹 운동 가능 여부
+    if (userGroup.length < 1 && type === 'G') {
+        return errResponse(baseResponse.REWARD_EXERCISE_USER_GROUP_CHECK);
+    } else {
+        return response(baseResponse.SUCCESS);
+    }
+};
