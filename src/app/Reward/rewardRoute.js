@@ -7,6 +7,15 @@ module.exports = function (app) {
         .get(reward.getChallenge)
         .post(reward.postChallenge);
     
-    // 리워드 페이지 접속
+    // 리워드 페이지 접속 API
     app.route('/rewards/users').get(authenticate, reward.getUserInfo);
+    
+    // 운동 선택 API
+    app.route('/rewards/running/exercise').get(authenticate, reward.checkUserExerciseGroup);
+    
+    // 운동 시작 API
+    app.route('/rewards/running/start').post(authenticate, reward.postUserRunning);
+    
+    // 운동 진행 API
+    app.route('/rewards/running/check').post(authenticate, reward.postUserRunningCheck);
 }
