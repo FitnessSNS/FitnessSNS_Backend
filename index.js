@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const methodOverride = require('method-override');
 const cors = require('cors');
+const boolParser = require(`express-query-boolean`);
 const {logger} = require("./config/winston");
 
 // process.env 불러오기
@@ -53,6 +54,8 @@ app.use(methodOverride());
 app.use(cookieParser());
 
 app.use(cors(corsOptions));
+
+app.use(boolParser());
 
 app.use(passport.initialize());
 initialize();
