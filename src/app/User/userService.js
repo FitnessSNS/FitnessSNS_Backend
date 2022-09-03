@@ -52,3 +52,19 @@ exports.addAccountDetails = async ({provider, email, nickname}) => {
     }
 }
 
+exports.chageStatus = async ({status, provider, email}) => {
+    try {
+        return await prisma.user.updateMany({
+            where: {
+                provider,
+                email
+            },
+            data: {
+                status  
+            }
+        })
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
+}

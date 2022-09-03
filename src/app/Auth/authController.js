@@ -240,10 +240,14 @@ exports.kakao_signin = async (req, res, next) => {
                 provider: 'kakao',
                 provider_id: kakao_user.data.id,
                 email: kakao_user.data.kakao_account.email, 
-                status: 'run',
+                status: 'RUN',
                 account_details_saved: false,
                 nickname: kakao_user.data.kakao_account.profile.nickname,
             });
+        }
+        if(user.status == "DELETED" || user.status == "STOP"){
+            res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
+            return;
         }
 
         token_generator(req, res, user);
@@ -467,5 +471,46 @@ exports.logout = async (req, res, next) => {
         next({ status: 500, message: 'internal server error' });
     }
 
+}
+
+// temporarily sign out delete the real user data, later migrate to change user status
+exports.signout = async (req, res, next) => {
+    try {
+        let token = accessTokenExtractor(req);
+        if(token === null || token === undefined){
+            res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
+            return;
+        }
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_KEY); 
+        } catch (e) {
+            if (e.name == "JsonWebTokenError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                return;
+            }
+            if (e.name == "TokenExpiredError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
+                return;
+            }
+            next({ status: 500, message: 'internal server error' });
+            return;
+        }
+        
+        await userService.chageStatus({status: "DELETED", provider: decoded.provider, email: decoded.email});
+
+        let refresh_token = refreshTokenExtractor(req);
+        if (refresh_token) {
+            await authService.deleteSession(token);
+        }
+        res.clearCookie('access_token');
+        res.clearCookie('refresh_token');
+
+        res.send(response(baseResponse.SUCCESS));
+
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    } 
 }
 
