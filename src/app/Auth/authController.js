@@ -75,7 +75,7 @@ exports.refresh = async (req, res, next) => {
                     path: '/auth/common'
                 });
                 await authService.updateSession(session.refresh_token, refresh_token);
-                res.status(200).json({ message: 'your tokens are re-generated' });
+                res.send(response(baseResponse.SUCCESS));
             }
             else {
                 await authService.deleteSession(session.refresh_token);
@@ -305,7 +305,7 @@ exports.emailVerifyStart = async (req, res, next) => {
             await authService.sendEvMail(target_email, new_code);
         }
         
-        res.status(200).json({message: 'verification code was sent'});
+        res.send(response(baseResponse.SUCCESS));
     }
     catch (e) {
         console.error(e);
@@ -348,15 +348,15 @@ exports.emailVerifyEnd = async (req,res,err) => {
 
         await authService.updateEv({email: target_email, isVerified: true}); 
 
-        res.status(200).json({message: 'your ev_token is generated'});
-        
-
+        res.send(response(baseResponse.SUCCESS));
     } catch (e) {
         console.error(e);
         next({status: 500, message: 'internal server error'});
     }
     
 }
+
+// nickname 중복 검사 로직 추가하기
 
 exports.nicknameVerify = async (req, res, next) => {
     let target_nickname = req.body.nickname;
@@ -384,6 +384,8 @@ const evTokenExtractor = (req) => {
     if (req && req.cookies && (req.cookies['ev_token'] != "")) token = req.cookies['ev_token'];
     return token;
 };
+
+// nickname 중복 검사 로직 추가하기
 exports.signup = async (req, res, next) => {
     try {
         let payload;
@@ -413,7 +415,6 @@ exports.signup = async (req, res, next) => {
             return;
         }
 
-        //password, nickname 검증 추가하기
         let password = req.body.password;
         let nickname = req.body.nickname; 
         if(!password){
@@ -448,7 +449,7 @@ exports.signup = async (req, res, next) => {
             nickname: nickname,
         });
         
-        res.status(200).json({message: "registration success"});
+        res.send(response(baseResponse.SUCCESS));
 
     } catch (e) {
         console.error(e);
@@ -465,7 +466,7 @@ exports.logout = async (req, res, next) => {
         res.clearCookie('access_token');
         res.clearCookie('refresh_token');
 
-        res.status(200).json({ message: "logout success" });
+        res.send(response(baseResponse.SUCCESS));
     } catch (e) {
         console.error(e);
         next({ status: 500, message: 'internal server error' });
