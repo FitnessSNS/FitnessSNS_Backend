@@ -28,6 +28,6 @@ router.post('/signup', authController.signup);
 router.post('/common/logout', authController.logout);
 
 //sign out routes
-router.get('/signout', authenticate, authController.signout);
+router.post('/signout', authenticate, authController.signout);
 
 module.exports = router;

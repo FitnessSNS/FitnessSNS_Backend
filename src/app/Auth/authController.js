@@ -473,7 +473,6 @@ exports.logout = async (req, res, next) => {
 
 }
 
-// temporarily sign out delete the real user data, later migrate to change user status
 exports.signout = async (req, res, next) => {
     try {
         let token = accessTokenExtractor(req);
