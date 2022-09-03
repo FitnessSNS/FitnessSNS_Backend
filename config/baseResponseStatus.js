@@ -29,11 +29,11 @@ module.exports = {
     // EvStart
     EV_VERIFICATION_COUNT_EXCEEDED: {isSuccess: false, code: 1401, message: "verification count per day exceeded"},
     // EvEnd
-    EV_CREDENTIAL_EMPTY: {isSuccess: false, code: 1401, message: "email or code is empty"},
-    EV_CODE_NOT_MATCH: {isSuccess: false, code: 1402, message: "code is not same"},
-    EV_CODE_NOT_GENERATED: {isSuccess: false, code: 1403, message: "email verification code is not generated"},
-    EV_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1404, message: "email verification code is outdated"},
-    EV_USER_EXIST: {isSuccess: false, code: 1405, message: "user already registered"},
+    EV_CREDENTIAL_EMPTY: {isSuccess: false, code: 1402, message: "email or code is empty"},
+    EV_CODE_NOT_MATCH: {isSuccess: false, code: 1403, message: "email verification code is not same"},
+    EV_CODE_NOT_GENERATED: {isSuccess: false, code: 1404, message: "email verification code is not generated"},
+    EV_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1405, message: "email verification code is outdated"},
+    EV_USER_EXIST: {isSuccess: false, code: 1406, message: "user already registered"},
 
     // SignUp
     PASSWORD_EMPTY: {isSuccess: false, code: 1500, message: "password is empty"},

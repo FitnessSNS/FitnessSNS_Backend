@@ -75,7 +75,7 @@ exports.refresh = async (req, res, next) => {
                     path: '/auth/common'
                 });
                 await authService.updateSession(session.refresh_token, refresh_token);
-                res.status(200).json({ message: 'your tokens are re-generated' });
+                res.send(response(baseResponse.SUCCESS));
             }
             else {
                 await authService.deleteSession(session.refresh_token);
@@ -98,7 +98,7 @@ const token_generator = async(req, res, user) =>{
             httpOnly: true,
         });
 
-        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5m' });
+        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
         res.cookie('refresh_token', refresh_token, {
             httpOnly: true,
             path: '/auth/common'
@@ -240,10 +240,14 @@ exports.kakao_signin = async (req, res, next) => {
                 provider: 'kakao',
                 provider_id: kakao_user.data.id,
                 email: kakao_user.data.kakao_account.email, 
-                status: 'run',
+                status: 'RUN',
                 account_details_saved: false,
                 nickname: kakao_user.data.kakao_account.profile.nickname,
             });
+        }
+        if(user.status == "DELETED" || user.status == "STOP"){
+            res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
+            return;
         }
 
         token_generator(req, res, user);
@@ -301,7 +305,7 @@ exports.emailVerifyStart = async (req, res, next) => {
             await authService.sendEvMail(target_email, new_code);
         }
         
-        res.status(200).json({message: 'verification code was sent'});
+        res.send(response(baseResponse.SUCCESS));
     }
     catch (e) {
         console.error(e);
@@ -344,15 +348,15 @@ exports.emailVerifyEnd = async (req,res,err) => {
 
         await authService.updateEv({email: target_email, isVerified: true}); 
 
-        res.status(200).json({message: 'your ev_token is generated'});
-        
-
+        res.send(response(baseResponse.SUCCESS));
     } catch (e) {
         console.error(e);
         next({status: 500, message: 'internal server error'});
     }
     
 }
+
+// nickname 중복 검사 로직 추가하기
 
 exports.nicknameVerify = async (req, res, next) => {
     let target_nickname = req.body.nickname;
@@ -380,6 +384,8 @@ const evTokenExtractor = (req) => {
     if (req && req.cookies && (req.cookies['ev_token'] != "")) token = req.cookies['ev_token'];
     return token;
 };
+
+// nickname 중복 검사 로직 추가하기
 exports.signup = async (req, res, next) => {
     try {
         let payload;
@@ -409,7 +415,6 @@ exports.signup = async (req, res, next) => {
             return;
         }
 
-        //password, nickname 검증 추가하기
         let password = req.body.password;
         let nickname = req.body.nickname; 
         if(!password){
@@ -444,7 +449,7 @@ exports.signup = async (req, res, next) => {
             nickname: nickname,
         });
         
-        res.status(200).json({message: "registration success"});
+        res.send(response(baseResponse.SUCCESS));
 
     } catch (e) {
         console.error(e);
@@ -461,11 +466,51 @@ exports.logout = async (req, res, next) => {
         res.clearCookie('access_token');
         res.clearCookie('refresh_token');
 
-        res.status(200).json({ message: "logout success" });
+        res.send(response(baseResponse.SUCCESS));
     } catch (e) {
         console.error(e);
         next({ status: 500, message: 'internal server error' });
     }
 
+}
+
+exports.signout = async (req, res, next) => {
+    try {
+        let token = accessTokenExtractor(req);
+        if(token === null || token === undefined){
+            res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
+            return;
+        }
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_KEY); 
+        } catch (e) {
+            if (e.name == "JsonWebTokenError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                return;
+            }
+            if (e.name == "TokenExpiredError") {
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
+                return;
+            }
+            next({ status: 500, message: 'internal server error' });
+            return;
+        }
+        
+        await userService.chageStatus({status: "DELETED", provider: decoded.provider, email: decoded.email});
+
+        let refresh_token = refreshTokenExtractor(req);
+        if (refresh_token) {
+            await authService.deleteSession(token);
+        }
+        res.clearCookie('access_token');
+        res.clearCookie('refresh_token');
+
+        res.send(response(baseResponse.SUCCESS));
+
+    } catch (e) {
+        console.error(e);
+        next({status: 500, message: 'internal server error'});
+    } 
 }
 

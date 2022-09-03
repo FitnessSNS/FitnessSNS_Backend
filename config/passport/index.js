@@ -5,30 +5,33 @@ const { Strategy: LocalStrategy } = require('passport-local');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const {createSalt, hashPassword} = require('../../src/app/Auth/authService');
+const {verifyUser} = require('../../src/app/Auth/authService');
 
 require('dotenv').config();
 
-async function verifyUser(pwfromClient, saltfromDB, hashfromDB){
-    let hashfromClient = await hashPassword(saltfromDB, pwfromClient);
-    return hashfromClient === hashfromDB;
-}
 
 //local strategy
 const localConfig = {usernameField: 'email', passwordField: 'password'};
 const localVerify =  async (email, password, done) => {
     try {
-        const user = await prisma.user.findFirst({where: {email}});  
+        const user = await prisma.user.findFirst({where: {
+            provider: 'local',
+            email,
+        }});  
          
         if(!user){
             done(null, false, {message: "user not exist"});
             return;
         }
-        if(await verifyUser(password, user.salt, user.password)){
-            done(null, user);
-        } else {
-            done(null, false, {message: "password not same"});
+        if(user.status == "DELETED" || user.status == "STOP"){
+            done(null, false, {message: "not running account"})
+            return;
         }
+        if(!await verifyUser(password, user.salt, user.password)){
+            done(null, false, {message: "password not same"});
+            return;
+        }
+        done(null, user);
     } catch (e) {
         console.log(e);
         done(e);

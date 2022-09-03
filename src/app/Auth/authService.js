@@ -188,3 +188,7 @@ exports.hashPassword = async (salt, password) => {
 
     } 
 }
+exports.verifyUser = async (pwfromClient, saltfromDB, hashfromDB) => {
+    let hashfromClient = await exports.hashPassword(saltfromDB, pwfromClient);
+    return hashfromClient === hashfromDB;
+}
