@@ -98,7 +98,7 @@ const token_generator = async(req, res, user) =>{
             httpOnly: true,
         });
 
-        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5m' });
+        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
         res.cookie('refresh_token', refresh_token, {
             httpOnly: true,
             path: '/auth/common'
