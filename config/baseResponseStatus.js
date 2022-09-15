@@ -54,6 +54,13 @@ module.exports = {
     RUNNING_CHECK_LOCATION_EMPTY: {isSuccess: false, code: 2512, message: "Location info is empty"},
     RUNNING_CHECK_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2513, message: "Location type is wrong"},
     
+    RUNNING_STOP_LOCATION_EMPTY: {isSuccess: false, code: 2521, message: "Location info is empty"},
+    RUNNING_STOP_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2522, message: "Location type is wrong"},
+    
+    RUNNING_END_FORCE_END_WRONG: {isSuccess: false, code: 2531, message: "Force end is wrong"},
+    RUNNING_END_LOCATION_EMPTY: {isSuccess: false, code: 2532, message: "Location info is empty"},
+    RUNNING_END_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2533, message: "Location type is wrong"},
+    
     
     // ----------------
     // Provider, Service Error
@@ -71,6 +78,7 @@ module.exports = {
     
     RUNNING_USER_NOT_FOUND: {"isSuccess": false, code: 3031, message: "User info not found" },
     RUNNING_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3032, message: "User nickname not found" },
+    RUNNING_USER_EXERCISE_LOCATION_EXIST: {"isSuccess": false, code: 3033, message: "Exercise location is already exist" },
     
     RUNNING_CHECK_USER_NOT_FOUND: {"isSuccess": false, code: 3041, message: "User info not found" },
     RUNNING_CHECK_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3042, message: "User nickname not found" },
@@ -80,6 +88,24 @@ module.exports = {
     RUNNING_CHECK_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3046, message: "Update location error" },
     RUNNING_CHECK_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3047, message: "Update exercise error" },
     RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3048, message: "Exercise info not found" },
+    
+    RUNNING_STOP_USER_NOT_FOUND: {"isSuccess": false, code: 3051, message: "User info not found" },
+    RUNNING_STOP_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3052, message: "User nickname not found" },
+    RUNNING_STOP_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3053, message: "Prior location not found" },
+    RUNNING_STOP_TIME_LESS_ZERO: {"isSuccess": false, code: 3054, message: "Exercise time is less than zero" },
+    RUNNING_STOP_TIME_OUT: {"isSuccess": false, code: 3055, message: "Exercise time out (over 3 hours)" },
+    RUNNING_STOP_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3056, message: "Update location error" },
+    RUNNING_STOP_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3057, message: "Update exercise error" },
+    RUNNING_STOP_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3058, message: "Exercise info not found" },
+    
+    RUNNING_END_USER_NOT_FOUND: {"isSuccess": false, code: 3061, message: "User info not found" },
+    RUNNING_END_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3062, message: "User nickname not found" },
+    RUNNING_END_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3063, message: "Prior location not found" },
+    RUNNING_END_TIME_LESS_ZERO: {"isSuccess": false, code: 3064, message: "Exercise time is less than zero" },
+    RUNNING_END_TIME_OUT: {"isSuccess": false, code: 3065, message: "Exercise time out (over 3 hours)" },
+    RUNNING_END_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3066, message: "Update location error" },
+    RUNNING_END_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3067, message: "Update exercise error" },
+    RUNNING_END_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3068, message: "Exercise info not found" },
     
     
     
