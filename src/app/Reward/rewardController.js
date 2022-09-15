@@ -120,3 +120,58 @@ exports.postUserRunningCheck = async function (req, res) {
         return res.send(postUserRunningCheckResult);
     }
 };
+
+/** 운동 일시정지 API
+ * [POST] /app/rewards/running/stop
+ * body : longitude, latitude
+ */
+exports.postUserRunningStop = async function (req, res) {
+    const { email } = req.user;
+    const { longitude, latitude } = req.body;
+    
+    // 경도와 위도 정보가 없을 경우
+    if (longitude === undefined || latitude === undefined) {
+        return res.send(errResponse(baseResponse.RUNNING_STOP_LOCATION_EMPTY));
+    }
+    
+    // 경도와 위도가 소수점이 아닐 경우
+    if (!coordinateCheck.test(longitude) || !coordinateCheck.test(latitude)) {
+        return res.send(errResponse(baseResponse.RUNNING_STOP_LOCATION_TYPE_WRONG));
+    }
+    
+    // 현재 위치까지 운동 기록 저장
+    const postUserRunningStopResult = await rewardService.updateUserRunningStop(email, longitude, latitude);
+    
+    return res.send(postUserRunningStopResult);
+};
+
+/** 운동 종료 API
+ * [POST] /app/rewards/running/end
+ * query : forceEnd
+ * body : longitude, latitude
+ */
+exports.postUserRunningEnd = async function (req, res) {
+    const { email } = req.user;
+    const forceEnd = req.query.forceEnd;
+    const { longitude, latitude } = req.body;
+    
+    // 강제 종료 여부 확인
+    if (forceEnd !== true && forceEnd !== false) {
+        return res.send(errResponse(baseResponse.RUNNING_END_FORCE_END_WRONG));
+    }
+    
+    // 경도와 위도 정보가 없을 경우
+    if (longitude === undefined || latitude === undefined) {
+        return res.send(errResponse(baseResponse.RUNNING_END_LOCATION_EMPTY));
+    }
+    
+    // 경도와 위도가 소수점이 아닐 경우
+    if (!coordinateCheck.test(longitude) || !coordinateCheck.test(latitude)) {
+        return res.send(errResponse(baseResponse.RUNNING_END_LOCATION_TYPE_WRONG));
+    }
+    
+    // 운동 기록 저장 후 종료
+    const postUserRunningEndResult = await rewardService.updateUserRunningEnd(email, forceEnd, longitude, latitude);
+    
+    return res.send(postUserRunningEndResult);
+};

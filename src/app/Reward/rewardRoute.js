@@ -18,4 +18,10 @@ module.exports = function (app) {
     
     // 운동 진행 API
     app.route('/rewards/running/check').post(authenticate, reward.postUserRunningCheck);
+    
+    // 운동 일시정지 API
+    app.route('/rewards/running/stop').post(authenticate, reward.postUserRunningStop);
+    
+    // 운동 종료 API
+    app.route('/rewards/running/end').post(authenticate, reward.postUserRunningEnd);
 }
