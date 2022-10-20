@@ -8,88 +8,6 @@ const authProvider = require('./authProvider');
 const userService = require('../User/userService');
 const {logger} = require('../../../config/winston');
 
-// 리프레시 토큰 추출
-const refreshTokenExtractor = (req) => {
-    let token = null;
-    
-    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
-        token = req.cookies['refresh_token'];
-    }
-    
-    return token;
-};
-
-/** JWT 재발급 API
- * [GET] /auth/common/refresh
- */
-exports.getRefreshToken = async (req, res) => {
-    // 토큰 검사
-    const token = refreshTokenExtractor(req);
-    if (token === null || token === undefined) {
-        res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
-    }
-    
-    // 토큰 복호화
-    await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
-        if (error) {
-            if (error.name === 'TokenExpiredError') {
-                // 리프레시 토큰이 만료될 경우 세션에서 삭제
-                await authService.deleteSession(token);
-                res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
-            } else {
-                res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
-            }
-        }
-    });
-    
-    // 세션 정보 불러오기
-    const session = await authProvider.getSessionByToken(token);
-    if (session !== null) {
-        // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        if (session.ip === ip) {
-            // IP가 일치하면 JWT 재발급
-            const accessToken = jwt.sign(
-                {
-                    provider: session.User.provider,
-                    email: session.User.email
-                },
-                process.env.JWT_KEY,
-                {
-                    expiresIn: '3h'
-                }
-            );
-            res.cookie('accessToken', accessToken, {
-                httpOnly: true,
-            });
-            
-            // 리프레시 토큰 재발급
-            const refreshToken = jwt.sign(
-                {},
-                process.env.JWT_KEY,
-                {
-                    expiresIn: '5d'
-                }
-            );
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                path: '/auth/common'
-            });
-            
-            // 세션 정보 수정
-            await authService.updateSession(session.refresh_token, refreshToken);
-            res.send(response(baseResponse.SUCCESS));
-        }
-        // IP가 일치하지 않을 경우
-        else {
-            res.send(errResponse(baseResponse.REFRESH_TOKEN_IP_NOT_MATCH));
-        }
-    // 세션 정보가 없을 경우
-    } else {
-        res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
-    }
-}
-
 // JWT 생성
 const tokenGenerator = async(req, res, user) =>{
     try {
@@ -134,7 +52,90 @@ const tokenGenerator = async(req, res, user) =>{
         }
     }
     catch (error) {
+        logger.error(`tokenGenerator - database error\n${JSON.stringify(error)}`);
         throw error;
+    }
+}
+
+// 리프레시 토큰 추출
+const refreshTokenExtractor = (req) => {
+    let token = null;
+    
+    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
+        token = req.cookies['refresh_token'];
+    }
+    
+    return token;
+};
+
+/** JWT 재발급 API
+ * [GET] /auth/common/refresh
+ */
+exports.getRefreshToken = async (req, res) => {
+    // 토큰 검사
+    const token = refreshTokenExtractor(req);
+    if (token === null || token === undefined) {
+        return res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
+    }
+    
+    // 토큰 복호화
+    await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
+        if (error) {
+            if (error.name === 'TokenExpiredError') {
+                // 리프레시 토큰이 만료될 경우 세션에서 삭제
+                await authService.deleteSession(token);
+                return res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
+            } else {
+                return res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
+            }
+        }
+    });
+    
+    // 세션 정보 불러오기
+    const session = await authProvider.getSessionByToken(token);
+    if (session !== null) {
+        // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        if (session.ip === ip) {
+            // IP가 일치하면 JWT 재발급
+            const accessToken = jwt.sign(
+                {
+                    provider: session.User.provider,
+                    email: session.User.email
+                },
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '3h'
+                }
+            );
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+            });
+            
+            // 리프레시 토큰 재발급
+            const refreshToken = jwt.sign(
+                {},
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '5d'
+                }
+            );
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                path: '/auth/common'
+            });
+            
+            // 세션 정보 수정
+            await authService.updateSession(session.refresh_token, refreshToken);
+            return res.send(response(baseResponse.SUCCESS));
+        }
+        // IP가 일치하지 않을 경우
+        else {
+            return res.send(errResponse(baseResponse.REFRESH_TOKEN_IP_NOT_MATCH));
+        }
+    // 세션 정보가 없을 경우
+    } else {
+        return res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
     }
 }
 
@@ -142,34 +143,22 @@ const tokenGenerator = async(req, res, user) =>{
  * [POST] /app/users
  * body : provider, email, password
  */
-exports.postSignIn = async (req, res, next) => {
-    try {
-        passport.authenticate('local', async (err, user, info) => {
-            try {
-                if (err) {
-                    next({ status: 500, message: 'internal server error' });
-                    return;
-                }
-                if (!user) {
-                    res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
-                    return;
-                }
-
-                await tokenGenerator(req, res, user);
-                
-                res.status(200).json({ message: "your token was generated" });
-            } catch (e) {
-                logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
-                next({ status: 500, message: 'passport-local service error' });
-            }
-        })(req, res);
-
-    } catch (e) {
-        console.error(e);
-        // TODO: 에러 발생 부분에 log 추가
-        logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
-        next({ status: 500, message: 'internal server error' });
-    }
+exports.postSignIn = async (req, res) => {
+    passport.authenticate('local', async (error, user, passportResponse) => {
+        if (error) {
+            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
+        }
+        
+        // 사용자 정보가 없을 경우
+        if (!user) {
+            return res.send(passportResponse);
+        }
+        
+        // JWT 발급
+        await tokenGenerator(req, res, user);
+    
+        return res.send(response(baseResponse.SUCCESS));
+    })(req, res);
 }
 
 const accessTokenExtractor = (req)=>{
