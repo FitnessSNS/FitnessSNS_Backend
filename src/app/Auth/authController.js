@@ -1,124 +1,148 @@
 const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-
-const authService = require('./authService');
-
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
+const authService = require('./authService');
+const authProvider = require('./authProvider');
 const userService = require('../User/userService');
 const {logger} = require('../../../config/winston');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-// index.js에 설정
-// require('dotenv').config();
-
-exports.dbtest = async (req, res, next) => {
-    let users = await prisma.user.findMany();
-    res.send({ users });
-}
-exports.jwttest = async (req, res, next) => {
-    try {
-        if (!req.user) {
-            next({ status: 401, message: 'unauthorized' });
-            return;
-        }
-        res.status(200).json({ msg: `${req.user.email} got the pizza. he/she is ${req.user.status}.` });
-    } catch (e) {
-        console.error(e);
-        next({ status: 500, message: 'internal server error' });
-    }
-}
-
+// 리프레시 토큰 추출
 const refreshTokenExtractor = (req) => {
     let token = null;
-    if (req && req.cookies && (req.cookies['refresh_token'] != "")) token = req.cookies['refresh_token'];
+    
+    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
+        token = req.cookies['refresh_token'];
+    }
+    
     return token;
 };
 
-exports.refresh = async (req, res, next) => {
-    try {
-        let token = refreshTokenExtractor(req);
-        if (token === null || token === undefined) {
-            res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
-            return;
-        }
-
-        try {
-            jwt.verify(token, process.env.JWT_KEY);
-        } catch (e) {
-            if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
-                return;
-            }
-            if (e.name == "TokenExpiredError") {
+/** JWT 재발급 API
+ * [GET] /auth/common/refresh
+ */
+exports.getRefreshToken = async (req, res) => {
+    // 토큰 검사
+    const token = refreshTokenExtractor(req);
+    if (token === null || token === undefined) {
+        res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
+    }
+    
+    // 토큰 복호화
+    await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
+        if (error) {
+            if (error.name === 'TokenExpiredError') {
+                // 리프레시 토큰이 만료될 경우 세션에서 삭제
                 await authService.deleteSession(token);
                 res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
-                return;
+            } else {
+                res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
             }
-            next({ status: 500, message: 'internal server error' });
-            return;
         }
-        const { session } = await authService.getSessionByToken(token);
-        if (session) {
-            const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-            if (session.ip === ip) {
-                const access_token = jwt.sign({ email: session.User.email }, process.env.JWT_KEY, { expiresIn: '1d' });
-                res.cookie('access_token', access_token, {
-                    httpOnly: true,
-                });
-                const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
-                res.cookie('refresh_token', refresh_token, {
-                    httpOnly: true,
-                    path: '/auth/common'
-                });
-                await authService.updateSession(session.refresh_token, refresh_token);
-                res.send(response(baseResponse.SUCCESS));
-            }
-            else {
-                await authService.deleteSession(session.refresh_token);
-                res.send(errResponse(baseResponse.IP_CHANGE_ERROR));
-            }
-        } else {
-            res.send(errResponse(baseResponse.SESSION_EXPIRED));
+    });
+    
+    // 세션 정보 불러오기
+    const session = await authProvider.getSessionByToken(token);
+    if (session !== null) {
+        // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        if (session.ip === ip) {
+            // IP가 일치하면 JWT 재발급
+            const accessToken = jwt.sign(
+                {
+                    provider: session.User.provider,
+                    email: session.User.email
+                },
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '3h'
+                }
+            );
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+            });
+            
+            // 리프레시 토큰 재발급
+            const refreshToken = jwt.sign(
+                {},
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '5d'
+                }
+            );
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                path: '/auth/common'
+            });
+            
+            // 세션 정보 수정
+            await authService.updateSession(session.refresh_token, refreshToken);
+            res.send(response(baseResponse.SUCCESS));
         }
-    } catch (e) {
-        console.error(e);
-        next({ status: 500, message: 'internal server error' });
+        // IP가 일치하지 않을 경우
+        else {
+            res.send(errResponse(baseResponse.REFRESH_TOKEN_IP_NOT_MATCH));
+        }
+    // 세션 정보가 없을 경우
+    } else {
+        res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
     }
 }
 
-const token_generator = async(req, res, user) =>{
-    console.log(user);
+// JWT 생성
+const tokenGenerator = async(req, res, user) =>{
     try {
-        const access_token = jwt.sign({ provider: user.provider, email: user.email }, process.env.JWT_KEY, { expiresIn: '1d' });
-        res.cookie('access_token', access_token, {
+        // 액세스 토큰 발급
+        const accessToken = jwt.sign(
+            {
+                provider: user.provider,
+                email: user.email
+            },
+            process.env.JWT_KEY,
+            {
+                expiresIn: '3h'
+            }
+        );
+        // 액세스 토큰 쿠키에 저장
+        res.cookie('accessToken', accessToken, {
             httpOnly: true,
         });
-
-        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
-        res.cookie('refresh_token', refresh_token, {
+    
+        // 리프레시 토큰 발급
+        const refreshToken = jwt.sign(
+            {},
+            process.env.JWT_KEY,
+            {
+                expiresIn: '5d'
+            }
+        );
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             path: '/auth/common'
         });
+    
+        // 기존 세션 정보 불러오기
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-        const { session } = await authService.getSessionByUserId(user.id);
-        if (session) {
-            await authService.updateSession(session.refresh_token, refresh_token);
+        const session = await authProvider.getSessionByUserId(user.id);
+        
+        // 세션 정보가 있을 경우
+        if (session !== null) {
+            await authService.updateSession(session.refresh_token, refreshToken);
         } else {
-            await authService.createSession(user.id, refresh_token, ip);
+            await authService.createSession(user.id, refreshToken, ip);
         }
-
-    } 
-    catch (e) {
-        throw e;
+    }
+    catch (error) {
+        throw error;
     }
 }
 
-exports.signin = async (req, res, next) => {
+/** 로그인 API
+ * [POST] /app/users
+ * body : provider, email, password
+ */
+exports.postSignIn = async (req, res, next) => {
     try {
         passport.authenticate('local', async (err, user, info) => {
             try {
@@ -131,11 +155,10 @@ exports.signin = async (req, res, next) => {
                     return;
                 }
 
-                await token_generator(req, res, user);
+                await tokenGenerator(req, res, user);
                 
                 res.status(200).json({ message: "your token was generated" });
             } catch (e) {
-                console.error(e);
                 logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
                 next({ status: 500, message: 'passport-local service error' });
             }
@@ -148,10 +171,7 @@ exports.signin = async (req, res, next) => {
         next({ status: 500, message: 'internal server error' });
     }
 }
-//oauth common
-exports.add_info = async (req, res, next) => {
-    res.render('addinfo');
-}
+
 const accessTokenExtractor = (req)=>{
     let token = null;
     if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
@@ -173,7 +193,7 @@ exports.add_account_details = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_KEY); 
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {
@@ -250,7 +270,7 @@ exports.kakao_signin = async (req, res, next) => {
             return;
         }
 
-        token_generator(req, res, user);
+        tokenGenerator(req, res, user);
 
         res.send(response(baseResponse.SUCCESS));
         
@@ -486,7 +506,7 @@ exports.signout = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_KEY); 
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {

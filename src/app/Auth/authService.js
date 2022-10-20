@@ -2,9 +2,13 @@ const util = require('util');
 const crypto = require('crypto');
 const randomBytesPromisified = util.promisify(crypto.randomBytes);
 const pbkdf2Promisified = util.promisify(crypto.pbkdf2);
+const {logger} = require('../../../config/winston');
 
+// Prisma Client
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
+// 메일 인증 객체
 const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
     service: process.env.MAIL_SERVICE,
@@ -16,67 +20,31 @@ const transporter = nodemailer.createTransport({
         pass: process.env.MAIL_PASSWORD,
     },
 })
+
+
+// CREATE
+// 세션 생성
 exports.createSession = async (user_id, refresh_token, ip) => {
     try {
         await prisma.session.create({
             data: {
-                refresh_token,
-                ip,
-                user_id
+                user_id: user_id,
+                refresh_token: refresh_token,
+                ip: ip
             }
         });
-    } catch (e) {
-        console.log(e);
-        throw e;
+    } catch (error) {
+        logger.error(`createSession - database error\n${JSON.stringify(error)}`);
+        throw error;
     }
-}
-
-exports.getSessionByToken = async (refresh_token) => {
-    try {
-        const session = await prisma.session.findFirst({ where: { refresh_token }, include: { User: { select: { email: true } } } });
-        return { session };
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
-}
-
-exports.getSessionByUserId = async (user_id) => {
-    try {
-        const session = await prisma.session.findFirst({ where: { user_id } });
-        return { session };
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
-}
+};
 
 
-exports.deleteSession = async (refresh_token) => {
-    try {
-        await prisma.session.deleteMany({ where: { refresh_token } });
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
-}
 
-exports.updateSession = async (prev_token, new_token) => {
-    try {
-        await prisma.session.updateMany({
-            where: {
-                refresh_token: prev_token
-            },
-            data: {
-                refresh_token: new_token
-            }
-        });
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
 
-}
+
+
+
 
 exports.getUserByEmail = async ({provider, email}) => {
     try {
@@ -192,3 +160,37 @@ exports.verifyUser = async (pwfromClient, saltfromDB, hashfromDB) => {
     let hashfromClient = await exports.hashPassword(saltfromDB, pwfromClient);
     return hashfromClient === hashfromDB;
 }
+
+
+// UPDATE
+// 세션 정보 수정
+exports.updateSession = async (prev_token, new_token) => {
+    try {
+        await prisma.session.updateMany({
+            where: {
+                refresh_token: prev_token
+            },
+            data: {
+                refresh_token: new_token
+            }
+        });
+    } catch (error) {
+        logger.error(`updateSession - database error\n${JSON.stringify(error)}`);
+        throw error;
+    }
+};
+
+
+
+// DELETE
+// 세션 정보 삭제
+exports.deleteSession = async (refresh_token) => {
+    try {
+        await prisma.session.deleteMany({
+            where: { refresh_token: refresh_token }
+        });
+    } catch (error) {
+        logger.error(`deleteSession - database error\n${JSON.stringify(error)}`);
+        throw error;
+    }
+};

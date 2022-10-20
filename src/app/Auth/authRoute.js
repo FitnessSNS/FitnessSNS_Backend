@@ -1,33 +1,27 @@
-var express = require('express');
-var router = express.Router();
 const authController = require('./authController.js');
 const {authenticate} = require("../../middleware/auth");
 
-router.get('/dbtest', authController.dbtest);
-router.get('/jwttest', authenticate, authController.jwttest);
-router.get('/addinfotest', authController.add_info);
+module.exports = (app) => {
+    // 회원가입
+    app.post('/auth/signup/evstart', authController.emailVerifyStart);
+    app.post('/auth/signup/evend', authController.emailVerifyEnd)
+    app.post('/auth/signup/nv', authController.nicknameVerify);
+    app.post('/auth/signup', authController.signup);
 
-//jwt routes
-router.post('/common/refresh', authController.refresh);
+    // OAuth
+    app.post('/auth/oauth/addinfo', authController.add_account_details)
 
-//oauth routes
-router.post('/oauth/addinfo', authController.add_account_details)
+    // 로그인
+    app.post('/auth/signIn', authController.postSignIn);
+    app.get('/auth/kakao/authorize',authController.kakao_authorize);
+    app.get('/auth/kakao/signin', authController.kakao_signin);
 
-//sign in routes
-router.post('/signin', authController.signin);
-router.get('/kakao/authorize',authController.kakao_authorize);
-router.get('/kakao/signin', authController.kakao_signin);
+    // JWT 재발급
+    app.get('/auth/common/refresh', authController.getRefreshToken);
 
-//sign up routes
-router.post('/signup/evstart', authController.emailVerifyStart);
-router.post('/signup/evend', authController.emailVerifyEnd)
-router.post('/signup/nv', authController.nicknameVerify);
-router.post('/signup', authController.signup);
+    // 로그아웃
+    app.post('/auth/common/logout', authController.logout);
 
-//log out routes
-router.post('/common/logout', authController.logout);
-
-//sign out routes
-router.post('/signout', authenticate, authController.signout);
-
-module.exports = router;
+    // 회원탈퇴
+    app.post('/auth/signout', authenticate, authController.signout);
+}
