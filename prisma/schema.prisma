@@ -111,18 +111,18 @@ model Reward {
 
 model Session {
   id            Int      @id @default(autoincrement())
-  user_id       Int      @unique
+  user_id       Int      @unique(map: "user_id")
   refresh_token String   @db.Text
   ip            String   @db.Text
   created_at    DateTime @default(now()) @db.DateTime(0)
   updated_at    DateTime @default(now()) @db.DateTime(0)
-  User          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  User          User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Session_user_id_fk")
 }
 
 model User {
   id                    Int                @id @default(autoincrement())
-  provider              String
-  provider_id           String?
+  provider              String             @db.VarChar(50)
+  provider_id           String?            @db.VarChar(50)
   email                 String             @db.VarChar(50)
   password              String?            @db.Text
   salt                  String?            @db.Text
@@ -165,16 +165,6 @@ model UserProfile {
   created_at DateTime @default(now()) @db.DateTime(0)
   updated_at DateTime @default(now()) @db.DateTime(0)
   User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-}
-
-model Ev {
-  id                Int      @id @default(autoincrement())
-  email             String   @unique @db.VarChar(50)
-  code              Int
-  updated_at        DateTime @default(now()) @db.DateTime(0)
-  total_gen_per_day Int      @default(1)
-  isVerified        Boolean  @default(false)
-  created_at        DateTime @default(now()) @db.DateTime(0)
 }
 
 model Exercise {
@@ -239,4 +229,13 @@ model UserGroup {
 
   @@index([group_id], map: "FK_GroupList_TO_UserGroup_1")
   @@index([user_id], map: "FK_User_TO_UserGroup_1")
+}
+
+model EmailVerification {
+  id                 Int      @id @default(autoincrement())
+  email              String   @unique(map: "email") @db.VarChar(50)
+  code               String   @db.VarChar(20)
+  verification_count Int      @default(1)
+  created_at         DateTime @default(now()) @db.DateTime(0)
+  updated_at         DateTime @default(now()) @db.DateTime(0)
 }
