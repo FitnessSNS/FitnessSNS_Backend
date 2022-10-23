@@ -2,19 +2,25 @@ const authController = require('./authController.js');
 const {authenticate} = require("../../middleware/auth");
 
 module.exports = (app) => {
+    // 로컬 회원가입 이메일 인증
+    app.post('/auth/signUp/emailVerification', authController.emailVerifyStart);
+    
+    // 로컬 회원가입 이메일 인증 완료
+    app.post('/auth/signUp/emailVerification/code', authController.emailVerifyEnd)
+    
+    // 닉네임 중복확인
+    app.post('/auth/signUp/nv', authController.nicknameVerify);
+    
     // 회원가입
-    app.post('/auth/signup/evstart', authController.emailVerifyStart);
-    app.post('/auth/signup/evend', authController.emailVerifyEnd)
-    app.post('/auth/signup/nv', authController.nicknameVerify);
-    app.post('/auth/signup', authController.signup);
+    app.post('/auth/signUp', authController.signup);
 
     // OAuth
     app.post('/auth/oauth/addinfo', authController.add_account_details)
 
     // 로그인
-    app.post('/auth/signIn', authController.postSignIn);
+    app.get('/auth/signIn', authController.postSignIn);
     app.get('/auth/kakao/authorize',authController.kakao_authorize);
-    app.get('/auth/kakao/signin', authController.kakao_signin);
+    app.get('/auth/kakao/signIn', authController.kakao_signin);
 
     // JWT 재발급
     app.get('/auth/common/refresh', authController.getRefreshToken);
