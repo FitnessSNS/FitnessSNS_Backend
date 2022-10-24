@@ -1,5 +1,5 @@
 const authController = require('./authController.js');
-const {authenticate} = require("../../middleware/auth");
+const {signUpAuth, authenticate} = require("../../middleware/auth");
 
 module.exports = (app) => {
     // 로컬 회원가입 이메일 인증
@@ -8,11 +8,11 @@ module.exports = (app) => {
     // 로컬 회원가입 이메일 인증 완료
     app.post('/auth/signUp/emailVerification/code', authController.emailVerifyEnd)
     
-    // 닉네임 중복확인
+    // 닉네임 중복검사
     app.post('/auth/signUp/nickname', authController.nicknameCheck);
     
-    // 회원가입
-    app.post('/auth/signUp', authController.signup);
+    // 로컬계정 회원가입
+    app.post('/auth/signUp', signUpAuth, authController.signUp);
 
     // OAuth
     app.post('/auth/oauth/addinfo', authController.add_account_details)

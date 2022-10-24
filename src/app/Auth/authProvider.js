@@ -12,6 +12,13 @@ exports.getUserByEmail = async (email) => {
             where: {
                 provider: 'local',
                 email: email
+            },
+            select: {
+                provider: true,
+                provider_id: true,
+                email: true,
+                nickname: true,
+                status: true
             }
         });
     } catch (error) {
@@ -69,6 +76,25 @@ exports.getUserNickname = async (nickname) => {
         return await prisma.User.findMany({
             where : { nickname: nicknameBuffer }
         });
+    } catch (error) {
+        logger.error(`getUserNickname - database error\n${error.message}`);
+    }
+};
+
+// 사용자 가입확인
+exports.getUserInfoByEmail = async (email) => {
+    try {
+        // Binary 타입으로 변환해서 조회
+        return await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT provider, provider_id, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = 'local' AND
+                      email = ${email};
+            `
+        );
     } catch (error) {
         logger.error(`getUserNickname - database error\n${error.message}`);
     }
