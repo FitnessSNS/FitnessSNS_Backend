@@ -2,48 +2,65 @@ module.exports = {
     // Success
     SUCCESS: {"isSuccess": true, "code": 1000, "message": "성공"},
     
-    // ----------------
-    // Controller error
-    // ----------------
-    // Token
-    ACCESS_TOKEN_EMPTY: {isSuccess: false, code: 1100, message: "access token is empty"},
-    ACCESS_TOKEN_VERFICATION_FAIL: {isSuccess: false, code: 1101, message: "access token verification failed"},
-    ACCESS_TOKEN_EXPIRED: {isSuccess: false, code: 1102, message: "access token has expired"},
-
-    REFRESH_TOKEN_EMPTY: {isSuccess: false, code: 1110, message: "refresh token is empty"},
-    REFRESH_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1111, message: "refresh token verification failed"},
-    REFRESH_TOKEN_EXPIRED: {isSuccess: false, code: 1112, message: "refresh token has expired"},
-
-    EV_TOKEN_EMPTY: {isSuccess: false, code: 1120, message: "email was not verified"},
-    EV_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1121, message: "ev token verification failed"},
-    EV_TOKEN_EXPIRED: {isSuccess: false, code: 1122, message: "ev token expired"},
+    // 토큰
+    SIGNUP_TOKEN_EMPTY: {isSuccess: false, code: 1051, message: "회원가입 토큰이 없습니다"},
+    SIGNUP_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1052, message: "회원가입 토큰 에러"},
+    SIGNIN_TOKEN_EMPTY: {isSuccess: false, code: 1053, message: "로그인 토큰이 없습니다"},
+    SIGNIN_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1054, message: "로그인 토큰 에러"},
     
-    // Session
-    IP_CHANGE_ERROR: {isSuccess: false, code: 1200, message: "ip has changed. please re-login"},
-    SESSION_EXPIRED: {isSuccess: false, code: 1201, message: "session expired from server"},
+    // 이메일 인증
+    EMAIL_VERIFICATION_EMAIL_EMPTY: {isSuccess: false, code: 1101, message: "이메일을 입력해주세요"},
+    EMAIL_VERIFICATION_EMAIL_TYPE_WRONG: {isSuccess: false, code: 1102, message: "이메일 형식에 맞게 입력해주세요"},
+    EMAIL_VERIFICATION_EMAIL_DUPLICATED: {isSuccess: false, code: 1103, message: "이미 해당 이메일로 가입한 계정이 있습니다"},
+    EMAIL_VERIFICATION_COUNT_EXCEED: {isSuccess: false, code: 1104, message: "하루 최대 인증 횟수를 초과했습니다"},
+    EMAIL_VERIFICATION_CODE_EMPTY: {isSuccess: false, code: 1105, message: "이메일 인증코드를 입력해주세요"},
+    EMAIL_VERIFICATION_NOT_GENERATED: {isSuccess: false, code: 1106, message: "이메일 인증을 시작하지 않았습니다"},
+    EMAIL_VERIFICATION_CODE_NOT_MATCH: {isSuccess: false, code: 1107, message: "인증코드가 일치하지 않습니다"},
+    EMAIL_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1108, message: "인증시간을 초과했습니다"},
+    
+    // 닉네임 중복검사
+    SIGNUP_NICKNAME_EMPTY: {isSuccess: false, code: 1111, message: "닉네임을 입력해주세요"},
+    SIGNUP_NICKNAME_LENGTH_OVER: {isSuccess: false, code: 1112, message: "닉네임은 12자 이내로 입력해주세요"},
+    SIGNUP_NICKNAME_REGEX_WRONG: {isSuccess: false, code: 1113, message: "닉네임은 특수문자 없이 입력해주세요"},
+    SIGNUP_NICKNAME_DUPLICATED: {isSuccess: false, code: 1114, message: "중복된 닉네임입니다"},
+    
+    // 로컬계정 회원가입
+    SIGNUP_EMAIL_NOT_MATCH: {isSuccess: false, code: 1121, message: "코드 인증한 이메일과 현재 이메일이 일치하지 않습니다"},
+    SIGNUP_EMAIL_VERIFICATION_NOT_MATCH: {isSuccess: false, code: 1122, message: "메일 인증한 내역이 없습니다"},
+    SIGNUP_PASSWORD_EMPTY: {isSuccess: false, code: 1123, message: "비밀번호를 입력해주세요"},
+    SIGNUP_PASSWORD_LENGTH_OVER: {isSuccess: false, code: 1124, message: "비밀번호는 8자리 이상, 20자리 이하로 입력해주세요"},
+    SIGNUP_PASSWORD_REGEX_WRONG: {isSuccess: false, code: 1125, message: "비밀번호는 최소 한 글자 이상의 영어, 숫자, 특수문자를 포함해서 입력해주세요"},
+    
+    // 리프레시 토큰
+    ACCESS_TOKEN_EMPTY: {isSuccess: false, code: 1101, message: "토큰이 없습니다"},
+    ACCESS_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1102, message: "토큰 인증에 실패했습니다"},
+    ACCESS_TOKEN_EXPIRED: {isSuccess: false, code: 1103, message: "토큰이 만료됐습니다"},
 
-    // SignIn
-    EMAIL_EMPTY: {isSuccess: false, code: 1300, message: "email empty"},
-    EMAIL_VALIDATION_FAIL: {isSuccess: false, code: 1301, message: "email condition does not match"},
+    REFRESH_TOKEN_EMPTY: {isSuccess: false, code: 1111, message: "리프레시 토큰이 없습니다"},
+    REFRESH_TOKEN_EXPIRED: {isSuccess: false, code: 1112, message: "리프레시 토큰이 만료됐습니다"},
+    REFRESH_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1113, message: "리프레시 토큰 복호화를 실패했습니다"},
+    REFRESH_TOKEN_IP_NOT_MATCH: {isSuccess: false, code: 1114, message: "IP가 일치하지 않습니다. 로그인을 다시 해주세요"},
+    REFRESH_TOKEN_SESSION_DELETED: {isSuccess: false, code: 1115, message: "세션 정보가 삭제됐습니다. 로그인을 다시 해주세요"},
+    
+    // 로그인
+    SIGNIN_LOCAL_PASSPORT: {isSuccess: false, code: 1301, message: "로그인을 할 수 없습니다 / Passport Error"},
+    SIGNIN_LOCAL_USER_NOT_FOUND: {isSuccess: false, code: 1302, message: "사용자 정보를 찾을 수 없습니다"},
+    SIGNIN_LOCAL_USER_STATUS: {isSuccess: false, code: 1303, message: "사용 중지된 계정입니다"},
+    SIGNIN_LOCAL_USER_PASSWORD_WRONG: {isSuccess: false, code: 1304, message: "비밀번호를 다시 확인해주세요"},
+    
+    
+    EMAIL_EMPTY: {isSuccess: false, code: 1302, message: "email empty"},
+    EMAIL_VALIDATION_FAIL: {isSuccess: false, code: 1303, message: "email condition does not match"},
 
-    // EvStart
-    EV_VERIFICATION_COUNT_EXCEEDED: {isSuccess: false, code: 1401, message: "verification count per day exceeded"},
-    // EvEnd
-    EV_CREDENTIAL_EMPTY: {isSuccess: false, code: 1402, message: "email or code is empty"},
-    EV_CODE_NOT_MATCH: {isSuccess: false, code: 1403, message: "email verification code is not same"},
-    EV_CODE_NOT_GENERATED: {isSuccess: false, code: 1404, message: "email verification code is not generated"},
-    EV_VERIFICATION_TIMEOUT: {isSuccess: false, code: 1405, message: "email verification code is outdated"},
-    EV_USER_EXIST: {isSuccess: false, code: 1406, message: "user already registered"},
+    
 
     // SignUp
-    PASSWORD_EMPTY: {isSuccess: false, code: 1500, message: "password is empty"},
-    NICKNAME_EMPTY: {isSuccess: false, code: 1501, message: "nickname is empty"},
     PASSWORD_VALIDATION_FAIL: {isSuccess: false, code: 1510, message: "password condition does not match"},
     NICKNAME_VALIDATION_FAIL: {isSuccess: false, code: 1511, message: "nickname condition does not match"},
     EV_VERIFICATION_FAIL: {isSuccess: false, code: 1520, message: "email verification process failed"},
 
     // User
-    USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "user validation failed" },
+    USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "사용자 인증에 실패했습니다" },
     ACCOUNT_DETAILS_SAVED: {isSuccess: false, code: 2001, message: "account details already saved"},
     
     // Running
