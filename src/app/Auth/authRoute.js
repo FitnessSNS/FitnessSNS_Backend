@@ -9,7 +9,7 @@ module.exports = (app) => {
     app.post('/auth/signUp/emailVerification/code', authController.emailVerifyEnd)
     
     // 닉네임 중복확인
-    app.post('/auth/signUp/nv', authController.nicknameVerify);
+    app.post('/auth/signUp/nickname', authController.nicknameCheck);
     
     // 회원가입
     app.post('/auth/signUp', authController.signup);

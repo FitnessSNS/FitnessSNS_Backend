@@ -1,7 +1,7 @@
 const {logger} = require('../../../config/winston');
 
 // Prisma Client
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // READ
@@ -54,8 +54,22 @@ exports.getEmailVerification = async (email) => {
     try {
         return await prisma.EmailVerification.findMany({
             where : { email: email }
-        })
+        });
     } catch (error) {
         logger.error(`getEmailVerification - database error\n${error.message}`);
     }
-}
+};
+
+// 닉네임 중복 확인
+exports.getUserNickname = async (nickname) => {
+    try {
+        // Binary 타입으로 변환해서 조회
+        const nicknameBuffer = Buffer.from(nickname);
+        
+        return await prisma.User.findMany({
+            where : { nickname: nicknameBuffer }
+        });
+    } catch (error) {
+        logger.error(`getUserNickname - database error\n${error.message}`);
+    }
+};

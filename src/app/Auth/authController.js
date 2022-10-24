@@ -11,6 +11,9 @@ const {logger} = require('../../../config/winston');
 // 이메일 정규표현식
 const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
 
+// 닉네임 정규표현식
+const regNickname = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+
 // JWT 생성
 const tokenGenerator = async(req, res, user) =>{
     try {
@@ -58,7 +61,7 @@ const tokenGenerator = async(req, res, user) =>{
         logger.error(`tokenGenerator - database error\n${error.message}`);
         throw error;
     }
-}
+};
 
 // 리프레시 토큰 추출
 const refreshTokenExtractor = async (req) => {
@@ -81,7 +84,7 @@ const generateRandomString = async (num) => {
     }
     
     return result;
-}
+};
 
 /** 이메일 인증 시작 API
  * [POST] /auth/signUp/emailVerification
@@ -95,18 +98,18 @@ exports.emailVerifyStart = async (req, res) => {
     
     // 이메일 유효성 검사
     if(email === undefined || email === null || email === ''){
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_EMPTY));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
     }
     
     // 이메일 형식 검사
     if (!regEmail.test(email)) {
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_TYPE_WRONG));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
     }
     
     // 이메일 중복검사
     const getUserByEmailResult = await authProvider.getUserByEmail(email);
     if (getUserByEmailResult.length > 0) {
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_DUPLICATED));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
     
     // 메일 인증번호 생성 (12자리 문자열)
@@ -133,7 +136,7 @@ exports.emailVerifyStart = async (req, res) => {
     }
     
     return res.send(emailVerificationResponse);
-}
+};
 
 /** 이메일 인증 완료 API
  * [POST] /auth/signUp/emailVerification/code
@@ -144,12 +147,12 @@ exports.emailVerifyEnd = async (req, res) => {
     
     // 이메일 유효성 검사
     if(email === undefined || email === null || email === ''){
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_EMPTY));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
     }
     
     // 이메일 형식 검사
     if (!regEmail.test(email)) {
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_TYPE_WRONG));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
     }
     
     // 인증코드 유효성 검사
@@ -180,7 +183,7 @@ exports.emailVerifyEnd = async (req, res) => {
     // 등록된 이메일이 있는 경우
     const userCheckResult = await authProvider.getUserByEmail(email);
     if (userCheckResult.length > 0) {
-        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_USER_ALREADY_EXIST));
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
     
     // 회원가입 JWT 생성
@@ -203,7 +206,38 @@ exports.emailVerifyEnd = async (req, res) => {
     await authService.deleteEmailVerification(email);
     
     return res.send(response(baseResponse.SUCCESS));
-}
+};
+
+/** 닉네임 중복검사 API
+ * [POST] /auth/signUp/nickname
+ * body : nickname
+ */
+exports.nicknameCheck = async (req, res) => {
+    const {nickname} = req.body;
+    
+    // 닉네임 유효성 검사
+    if(nickname === undefined || nickname === null || nickname === '') {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
+    }
+    
+    // 닉네임 길이 검사
+    if (nickname.length > 12) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_LENGTH_OVER));
+    }
+    
+    // 닉네임 특수문자 검사
+    if(!regNickname.test(nickname)){
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_REGEX_WRONG));
+    }
+    
+    // 닉네임 중복검사
+    const nicknameResult = await authProvider.getUserNickname(nickname);
+    if (nicknameResult.length > 0) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    }
+    
+    return res.send(response(baseResponse.SUCCESS, {nickname}));
+};
 
 /** JWT 재발급 API
  * [GET] /auth/common/refresh
@@ -407,28 +441,6 @@ exports.kakao_signin = async (req, res, next) => {
 
 
 
-// nickname 중복 검사 로직 추가하기
-
-exports.nicknameVerify = async (req, res, next) => {
-    let target_nickname = req.body.nickname;
-    try {
-        if(!target_nickname) {
-            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
-            return;
-        }
-        let nnRegex = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]{4,12}$/;
-        if(!nnRegex.test(target_nickname)){
-            res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
-            return;
-        }
-        res.send(response(baseResponse.SUCCESS));
-        return; 
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
-     
-}
 
 const evTokenExtractor = (req) => {
     let token = null;
