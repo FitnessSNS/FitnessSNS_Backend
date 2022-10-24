@@ -1,157 +1,427 @@
 const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-
-const authService = require('./authService');
-
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
-const userService = require('../User/userService');
+const authService = require('./authService');
+const authProvider = require('./authProvider');
 const {logger} = require('../../../config/winston');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// 이메일 정규표현식
+const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
 
-// index.js에 설정
-// require('dotenv').config();
+// 닉네임 정규표현식
+const regNickname = /[^\w\sㄱ-힣]|[\_]/g;
 
-exports.dbtest = async (req, res, next) => {
-    let users = await prisma.user.findMany();
-    res.send({ users });
-}
-exports.jwttest = async (req, res, next) => {
-    try {
-        if (!req.user) {
-            next({ status: 401, message: 'unauthorized' });
-            return;
+// 비밀번호 정규표현식 (8~20자리, 특수문자, 영어, 숫자 포함)
+const regPassword = /^.*(?=^.{8,20}$)(?=.*\d)(?=.*[a-zA-Z])(?=.*[!@#$%^&+=]).*$/;
+
+// 문자열 길이 체크
+const getByteLength = async (str) => {
+    let byte = 0;
+    let count = 12;
+    
+    // 글자 바이트 및 개수 확인
+    for (let character of str) {
+        const code = character.charCodeAt(0);
+        
+        if (code > 127) {
+            byte += 2;
+        } else if (code > 64 && code < 91) {
+            byte += 2;
+        } else {
+            byte += 1;
         }
-        res.status(200).json({ msg: `${req.user.email} got the pizza. he/she is ${req.user.status}.` });
-    } catch (e) {
-        console.error(e);
-        next({ status: 500, message: 'internal server error' });
+    
+        count--;
     }
-}
+    
+    // 12글자가 넘을 경우
+    if (count < 0) {
+        return -1;
+    } else {
+        return byte;
+    }
+};
 
-const refreshTokenExtractor = (req) => {
+// 랜덤 문자열 생성
+const generateRandomString = async (num) => {
+    const characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    
+    for (let i = 0; i < num; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    
+    return result;
+};
+
+// 리프레시 토큰 추출
+const refreshTokenExtractor = async (req) => {
     let token = null;
-    if (req && req.cookies && (req.cookies['refresh_token'] != "")) token = req.cookies['refresh_token'];
+    
+    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
+        token = req.cookies['refresh_token'];
+    }
+    
     return token;
 };
 
-exports.refresh = async (req, res, next) => {
+// JWT 생성
+const tokenGenerator = async(req, res, user) =>{
     try {
-        let token = refreshTokenExtractor(req);
-        if (token === null || token === undefined) {
-            res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
-            return;
-        }
-
-        try {
-            jwt.verify(token, process.env.JWT_KEY);
-        } catch (e) {
-            if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
-                return;
+        // 액세스 토큰 발급
+        const accessToken = jwt.sign(
+            {
+                provider: user.provider,
+                email: user.email
+            },
+            process.env.JWT_KEY,
+            {
+                expiresIn: '3h'
             }
-            if (e.name == "TokenExpiredError") {
-                await authService.deleteSession(token);
-                res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
-                return;
-            }
-            next({ status: 500, message: 'internal server error' });
-            return;
-        }
-        const { session } = await authService.getSessionByToken(token);
-        if (session) {
-            const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-            if (session.ip === ip) {
-                const access_token = jwt.sign({ email: session.User.email }, process.env.JWT_KEY, { expiresIn: '1d' });
-                res.cookie('access_token', access_token, {
-                    httpOnly: true,
-                });
-                const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
-                res.cookie('refresh_token', refresh_token, {
-                    httpOnly: true,
-                    path: '/auth/common'
-                });
-                await authService.updateSession(session.refresh_token, refresh_token);
-                res.send(response(baseResponse.SUCCESS));
-            }
-            else {
-                await authService.deleteSession(session.refresh_token);
-                res.send(errResponse(baseResponse.IP_CHANGE_ERROR));
-            }
-        } else {
-            res.send(errResponse(baseResponse.SESSION_EXPIRED));
-        }
-    } catch (e) {
-        console.error(e);
-        next({ status: 500, message: 'internal server error' });
-    }
-}
-
-const token_generator = async(req, res, user) =>{
-    console.log(user);
-    try {
-        const access_token = jwt.sign({ provider: user.provider, email: user.email }, process.env.JWT_KEY, { expiresIn: '1d' });
-        res.cookie('access_token', access_token, {
+        );
+        // 액세스 토큰 쿠키에 저장
+        res.cookie('accessToken', accessToken, {
             httpOnly: true,
         });
-
-        const refresh_token = jwt.sign({}, process.env.JWT_KEY, { expiresIn: '5d' });
-        res.cookie('refresh_token', refresh_token, {
+    
+        // 리프레시 토큰 발급
+        const refreshToken = jwt.sign(
+            {},
+            process.env.JWT_KEY,
+            {
+                expiresIn: '5d'
+            }
+        );
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             path: '/auth/common'
         });
+    
+        // 기존 세션 정보 불러오기
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-        const { session } = await authService.getSessionByUserId(user.id);
-        if (session) {
-            await authService.updateSession(session.refresh_token, refresh_token);
+        const session = await authProvider.getSessionByUserId(user.id);
+        
+        // 세션 정보가 있을 경우
+        if (session !== null) {
+            await authService.updateSession(session.refresh_token, refreshToken);
         } else {
-            await authService.createSession(user.id, refresh_token, ip);
+            await authService.createSession(user.id, refreshToken, ip);
         }
-
-    } 
-    catch (e) {
-        throw e;
     }
+    catch (error) {
+        logger.error(`tokenGenerator - database error\n${error.message}`);
+        throw error;
+    }
+};
+
+/** 이메일 인증 시작 API
+ * [POST] /auth/signUp/emailVerification
+ * body : email
+ */
+exports.emailVerifyStart = async (req, res) => {
+    const {email} = req.body;
+    
+    // 메일 하루 최대 인증 횟수
+    const MAX_VERIFICATION_TIME = 10;
+    
+    // 이메일 유효성 검사
+    if (email === undefined || email === null || email === '') {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
+    }
+    
+    // 이메일 형식 검사
+    if (!regEmail.test(email)) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
+    }
+    
+    // 이메일 중복검사
+    const getUserByEmailResult = await authProvider.getUserByEmail(email);
+    if (getUserByEmailResult.length > 0) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
+    }
+    
+    // 메일 인증번호 생성 (12자리 문자열)
+    const verificationCode = await generateRandomString(12);
+    
+    // 이메일 인증정보 불러오기
+    const emailVerificationResult = await authProvider.getEmailVerification(email);
+    
+    // 기존에 생성한 이메일 인증정보가 없을 경우
+    let emailVerificationResponse = null;
+    if (emailVerificationResult.length < 1) {
+        emailVerificationResponse = await authService.createEmailVerification(email, verificationCode);
+    } else {
+        // 현재 인증 횟수
+        const currentVerificationCount = emailVerificationResult[0].verification_count;
+        
+        // 하루 최대 인증 횟수를 초과할 경우
+        if (currentVerificationCount > MAX_VERIFICATION_TIME) {
+            return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_COUNT_EXCEED));
+        }
+        
+        // 인증 코드 수정 후 이메일 송신
+        emailVerificationResponse = await authService.updateEmailVerification(email, verificationCode, currentVerificationCount + 1);
+    }
+    
+    return res.send(emailVerificationResponse);
+};
+
+/** 이메일 인증 완료 API
+ * [POST] /auth/signUp/emailVerification/code
+ * body : email, code
+ */
+exports.emailVerifyEnd = async (req, res) => {
+    const {email, code} = req.body;
+    
+    // 이메일 유효성 검사
+    if (email === undefined || email === null || email === '') {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
+    }
+    
+    // 이메일 형식 검사
+    if (!regEmail.test(email)) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
+    }
+    
+    // 인증코드 유효성 검사
+    if (code === undefined || code === null || code === '') {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_EMPTY));
+    }
+    
+    // 이메일 인증정보 불러오기
+    const emailVerificationResult = await authProvider.getEmailVerification(email);
+    
+    // 이메일 인증정보가 없을 경우
+    if (emailVerificationResult.length < 1) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_NOT_GENERATED));
+    }
+    
+    // 인증코드가 맞지 않을 경우
+    if (code !== emailVerificationResult[0].code) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_NOT_MATCH));
+    }
+    
+    // 인증 시간을 초과한 경우 (4분)
+    const now = new Date();
+    const timeDiff = (now.getTime() - emailVerificationResult[0].updated_at.getTime()) / (60 * 1000);
+    if (timeDiff > 4) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_TIMEOUT));
+    }
+    
+    // 등록된 이메일이 있는 경우
+    const userCheckResult = await authProvider.getUserByEmail(email);
+    if (userCheckResult.length > 0) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
+    }
+    
+    // 회원가입 JWT 생성
+    const signUpToken = jwt.sign(
+        {
+            email: email
+        },
+        process.env.JWT_KEY,
+        {
+            expiresIn: '3h'
+        });
+    
+    // JWT 쿠키에 저장
+    res.cookie('signUpToken', signUpToken, {
+        httpOnly: true,
+        path: '/auth/signUp',
+    });
+    
+    return res.send(response(baseResponse.SUCCESS));
+};
+
+/** 닉네임 중복검사 API
+ * [POST] /auth/signUp/nickname
+ * body : nickname
+ */
+exports.nicknameCheck = async (req, res) => {
+    const {nickname} = req.body;
+    
+    // 닉네임 확인
+    if (nickname === undefined || nickname === null || nickname === '') {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
+    }
+    
+    // 닉네임 길이 검사
+    if (nickname.length > 12) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_LENGTH_OVER));
+    }
+    
+    // 닉네임 유효성 검사
+    if (!regNickname.test(nickname)) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_REGEX_WRONG));
+    }
+    
+    // 닉네임 중복검사
+    const nicknameResult = await authProvider.getUserNickname(nickname);
+    if (nicknameResult.length > 0) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    }
+    
+    return res.send(response(baseResponse.SUCCESS, {nickname}));
+};
+
+/** 로컬계정 회원가입 API
+ * [POST] /auth/signUp
+ * body : email, nickname, password
+ */
+exports.signUp = async (req, res) => {
+    const userEmail = req.verifiedToken.email;
+    const {email, nickname, password} = req.body;
+    const nicknameByteLength = await getByteLength(nickname);
+    
+    // 이메일 일치 확인
+    if (userEmail !== email) {
+        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_NOT_MATCH));
+    }
+    
+    // 이메일 인증정보 확인
+    const emailVeirificationResult = await authProvider.getEmailVerification(email);
+    if (emailVeirificationResult.length < 1) {
+        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_VERIFICATION_NOT_MATCH));
+    }
+   
+    // 닉네임 확인
+    if (nickname === undefined || nickname === null || nickname === '') {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
+    }
+    
+    // 닉네임 길이 검사
+    if (nicknameByteLength < 0 || nicknameByteLength.length > 12) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_LENGTH_OVER));
+    }
+    
+    // 닉네임 유효성 검사
+    if (regNickname.test(nickname)) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_REGEX_WRONG));
+    }
+    
+    // 닉네임 중복검사
+    const nicknameResult = await authProvider.getUserNickname(nickname);
+    if (nicknameResult !== undefined && nicknameResult.length > 0) {
+        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    }
+    
+    // 비밀번호 확인
+    if (password === undefined || password === null || password === '') {
+        return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_EMPTY));
+    }
+    
+    // 비밀번호 길이 검사
+    if (password.length < 8 || password.length > 20) {
+        return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_LENGTH_OVER));
+    }
+   
+    // 비밀번호 유효성 검사
+    if (!regPassword.test(password)) {
+        return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_REGEX_WRONG));
+    }
+    
+    // 로컬계정 생성
+    const signUpResponse = await authService.createUser(email, nickname, password);
+    
+    return res.send(signUpResponse);
 }
 
-exports.signin = async (req, res, next) => {
-    try {
-        passport.authenticate('local', async (err, user, info) => {
-            try {
-                if (err) {
-                    next({ status: 500, message: 'internal server error' });
-                    return;
-                }
-                if (!user) {
-                    res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
-                    return;
-                }
-
-                await token_generator(req, res, user);
-                
-                res.status(200).json({ message: "your token was generated" });
-            } catch (e) {
-                console.error(e);
-                logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
-                next({ status: 500, message: 'passport-local service error' });
+/** JWT 재발급 API
+ * [GET] /auth/common/refresh
+ */
+exports.getRefreshToken = async (req, res) => {
+    // 토큰 검사
+    const token = await refreshTokenExtractor(req);
+    if (token === null || token === undefined) {
+        return res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
+    }
+    
+    // 토큰 복호화
+    await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
+        if (error) {
+            if (error.name === 'TokenExpiredError') {
+                // 리프레시 토큰이 만료될 경우 세션에서 삭제
+                await authService.deleteSession(token);
+                return res.send(errResponse(baseResponse.REFRESH_TOKEN_EXPIRED));
+            } else {
+                return res.send(errResponse(baseResponse.REFRESH_TOKEN_VERIFICATION_FAIL));
             }
-        })(req, res);
-
-    } catch (e) {
-        console.error(e);
-        // TODO: 에러 발생 부분에 log 추가
-        logger.error(`Global error\n: ${e.message} \n${JSON.stringify(e)}`);
-        next({ status: 500, message: 'internal server error' });
+        }
+    });
+    
+    // 세션 정보 불러오기
+    const session = await authProvider.getSessionByToken(token);
+    if (session !== null) {
+        // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        if (session.ip === ip) {
+            // IP가 일치하면 JWT 재발급
+            const accessToken = jwt.sign(
+                {
+                    provider: session.User.provider,
+                    email: session.User.email
+                },
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '3h'
+                }
+            );
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+            });
+            
+            // 리프레시 토큰 재발급
+            const refreshToken = jwt.sign(
+                {},
+                process.env.JWT_KEY,
+                {
+                    expiresIn: '5d'
+                }
+            );
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                path: '/auth/common'
+            });
+            
+            // 세션 정보 수정
+            await authService.updateSession(session.refresh_token, refreshToken);
+            return res.send(response(baseResponse.SUCCESS));
+        }
+        // IP가 일치하지 않을 경우
+        else {
+            return res.send(errResponse(baseResponse.REFRESH_TOKEN_IP_NOT_MATCH));
+        }
+    // 세션 정보가 없을 경우
+    } else {
+        return res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
     }
 }
-//oauth common
-exports.add_info = async (req, res, next) => {
-    res.render('addinfo');
+
+/** 로그인 API
+ * [POST] /app/users
+ * body : provider, email, password
+ */
+exports.postSignIn = async (req, res) => {
+    passport.authenticate('local', async (error, user, passportResponse) => {
+        if (error) {
+            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
+        }
+        
+        // 사용자 정보가 없을 경우
+        if (!user) {
+            return res.send(passportResponse);
+        }
+        
+        // JWT 발급
+        await tokenGenerator(req, res, user);
+    
+        return res.send(response(baseResponse.SUCCESS));
+    })(req, res);
 }
+
 const accessTokenExtractor = (req)=>{
     let token = null;
     if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
@@ -173,7 +443,7 @@ exports.add_account_details = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_KEY); 
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {
@@ -250,7 +520,7 @@ exports.kakao_signin = async (req, res, next) => {
             return;
         }
 
-        token_generator(req, res, user);
+        await tokenGenerator(req, res, user);
 
         res.send(response(baseResponse.SUCCESS));
         
@@ -258,208 +528,15 @@ exports.kakao_signin = async (req, res, next) => {
         next({status: 500, message: 'internal server error'});
     }
 }
-exports.emailVerifyStart = async (req, res, next) => {
-    try {
-        let target_email = req.body.email;
-        if(!target_email){
-            res.send(errResponse(baseResponse.EMAIL_EMPTY));
-            return;
-        }
-        let regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
-        if (!regEmail.test(target_email)) {
-            res.send(errResponse(baseResponse.EMAIL_VALIDATION_FAIL));
-            return;
-        }
 
-        let new_code = Math.floor(Math.random()*1000000);
-        if(new_code.toString().length < 6) new_code+=100000;
 
-        let ev = await authService.getEvByEmail(target_email);         
-        if(!ev){
-            await authService.createEv(target_email, new_code);
-            await authService.sendEvMail(target_email, new_code);
-        } else {
-            let {email, code, updated_at, total_gen_per_day, isVerified} = ev;
-            let curTime = new Date();
-            let curYear = curTime.getFullYear();
-            let curMonth = curTime.getMonth();
-            let curDate = curTime.getDate();
-            let evYear = updated_at.getFullYear();
-            let evMonth = updated_at.getMonth();
-            let evDate = updated_at.getDate();
-            if (evYear < curYear || evMonth < curMonth || evDate < curDate){
-                total_gen_per_day = 1;
-            } else {
-                total_gen_per_day += 1;
-            }
 
-            if (total_gen_per_day > 10){
-                res.send(errResponse(baseResponse.EV_VERIFICATION_COUNT_EXCEEDED));
-                return;
-            }
-            code = new_code;
-            isVerified = false;
-            updated_at = new Date();
-            console.log(updated_at);
-            await authService.updateEv({email, code, updated_at, total_gen_per_day, isVerified});
-            await authService.sendEvMail(target_email, new_code);
-        }
-        
-        res.send(response(baseResponse.SUCCESS));
-    }
-    catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
 
-}
-exports.emailVerifyEnd = async (req,res,err) => {
-    let target_email = req.body.email;
-    let target_code = req.body.code;
-    try {
-        if(!target_email || !target_code) {
-            res.send(errResponse(baseResponse.EV_CREDENTIAL_EMPTY));
-            return;
-        }
-        let ev = await authService.getEvByEmail(target_email);
-        if(!ev){
-            res.send(errResponse(baseResponse.EV_CODE_NOT_GENERATED));
-            return;
-        }
-        if (Number(target_code) !== ev.code) {
-            res.send(errResponse(baseResponse.EV_CODE_NOT_MATCH));
-            return;
-        }
-        if ((new Date().getTime() - ev.updated_at.getTime()) / (1000*60) > 1){
-            res.send(errResponse(baseResponse.EV_VERIFICATION_TIMEOUT));
-            return;
-        }
-        let user = await authService.getUserByEmail({provider:'local', email:target_email});
-        if(user){
-            res.send(errResponse(baseResponse.EV_USER_EXIST));
-            return;
-        }
-        
-        const ev_token = jwt.sign({ email: target_email }, process.env.JWT_KEY, { expiresIn: '5m' });
-        res.cookie('ev_token', ev_token, {
-            httpOnly: true,
-            path: '/auth/signup',
-        });
 
-        await authService.updateEv({email: target_email, isVerified: true}); 
-
-        res.send(response(baseResponse.SUCCESS));
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
-    
-}
-
-// nickname 중복 검사 로직 추가하기
-
-exports.nicknameVerify = async (req, res, next) => {
-    let target_nickname = req.body.nickname;
-    try {
-        if(!target_nickname) {
-            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
-            return;
-        }
-        let nnRegex = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]{4,12}$/;
-        if(!nnRegex.test(target_nickname)){
-            res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
-            return;
-        }
-        res.send(response(baseResponse.SUCCESS));
-        return; 
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
-     
-}
-
-const evTokenExtractor = (req) => {
-    let token = null;
-    if (req && req.cookies && (req.cookies['ev_token'] != "")) token = req.cookies['ev_token'];
-    return token;
-};
-
-// nickname 중복 검사 로직 추가하기
-exports.signup = async (req, res, next) => {
-    try {
-        let payload;
-        let ev_token = evTokenExtractor(req);
-        if(!ev_token) {
-            res.send(errResponse(baseResponse.EV_TOKEN_EMPTY));
-            return;
-        }
-        try {
-            payload = jwt.verify(ev_token, process.env.JWT_KEY);
-        } catch (e) {
-            if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.EV_TOKEN_VERIFICATION_FAIL));
-                return;
-            }
-            if (e.name == "TokenExpiredError") {
-                res.send(errResponse(baseResponse.EV_TOKEN_EXPIRED));
-                return;
-            }
-            next({ status: 500, message: 'internal server error' });
-            return;
-        }
-
-        let ev = await authService.getEvByEmail(payload.email);
-        if(!ev || !ev.isVerified){
-            res.send(errResponse(baseResponse.EV_VERIFICATION_FAIL));
-            return;
-        }
-
-        let password = req.body.password;
-        let nickname = req.body.nickname; 
-        if(!password){
-            res.send(errResponse(baseResponse.PASSWORD_EMPTY));
-            return;
-        }    
-        if(!nickname){
-            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
-            return;
-        }
-        let pwRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()\-_+=~`])[A-Za-z\d!@#$%^&*()\-_+=~`]{8,20}$/;
-        let nnRegex = /^[A-Za-z\dㄱ-ㅎ|ㅏ-ㅣ|가-힣]{4,12}$/;
-        if(!pwRegex.test(password)){
-            res.send(errResponse(baseResponse.PASSWORD_VALIDATION_FAIL));
-            return;
-        }
-        if(!nnRegex.test(nickname)){
-            res.send(errResponse(baseResponse.NICKNAME_VALIDATION_FAIL));
-            return;
-        }
-
-        let salt = await authService.createSalt();
-        let hashPassword = await authService.hashPassword(salt, password);
-
-        let user = await userService.createUser({
-            provider: 'local',
-            email: payload.email,
-            password: hashPassword,
-            salt: salt,
-            status: 'run',
-            account_details_saved: true,
-            nickname: nickname,
-        });
-        
-        res.send(response(baseResponse.SUCCESS));
-
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
-}
 
 exports.logout = async (req, res, next) => {
     try {
-        let token = refreshTokenExtractor(req);
+        let token = await refreshTokenExtractor(req);
         if (token) {
             await authService.deleteSession(token);
         }
@@ -486,7 +563,7 @@ exports.signout = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_KEY); 
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERFICATION_FAIL));
+                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
                 return;
             }
             if (e.name == "TokenExpiredError") {
@@ -499,7 +576,7 @@ exports.signout = async (req, res, next) => {
         
         await userService.chageStatus({status: "DELETED", provider: decoded.provider, email: decoded.email});
 
-        let refresh_token = refreshTokenExtractor(req);
+        let refresh_token = await refreshTokenExtractor(req);
         if (refresh_token) {
             await authService.deleteSession(token);
         }
