@@ -254,7 +254,7 @@ exports.nicknameCheck = async (req, res) => {
     }
     
     // 닉네임 유효성 검사
-    if (!regNickname.test(nickname)) {
+    if (regNickname.test(nickname)) {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_REGEX_WRONG));
     }
     
@@ -401,7 +401,7 @@ exports.getRefreshToken = async (req, res) => {
 }
 
 /** 로그인 API
- * [POST] /app/users
+ * [POST] /auth/signIn
  * body : provider, email, password
  */
 exports.postSignIn = async (req, res) => {
@@ -417,8 +417,15 @@ exports.postSignIn = async (req, res) => {
         
         // JWT 발급
         await tokenGenerator(req, res, user);
+        
+        const signInResult = {
+            provider: user.provider,
+            email: user.email,
+            nickname: user.nickname,
+            status: user.status
+        };
     
-        return res.send(response(baseResponse.SUCCESS));
+        return res.send(response(baseResponse.SUCCESS, signInResult));
     })(req, res);
 }
 

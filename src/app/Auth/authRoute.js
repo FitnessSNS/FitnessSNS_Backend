@@ -14,11 +14,12 @@ module.exports = (app) => {
     // 로컬계정 회원가입
     app.post('/auth/signUp', signUpAuth, authController.signUp);
 
+   
     // OAuth
     app.post('/auth/oauth/addinfo', authController.add_account_details)
 
     // 로그인
-    app.get('/auth/signIn', authController.postSignIn);
+    app.post('/auth/local/signIn', authController.postSignIn);
     app.get('/auth/kakao/authorize',authController.kakao_authorize);
     app.get('/auth/kakao/signIn', authController.kakao_signin);
 
