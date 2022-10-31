@@ -14,7 +14,7 @@ Node.js API Server
 ```
 .
 ├── common                              # 사용자 정의 함수가 들어있는 폴더
-│   ├── index.js                        # async 래핑 함수
+│   ├── moduleConfig.js                        # async 래핑 함수
 ├── config                              # 설정 파일들이 들어가 있는 폴더
 │   ├── response.js                     # API 응답 프레임
 │   ├── baseResponseStatus.js           # API 응답 코드 및 메세지
@@ -39,7 +39,7 @@ Node.js API Server
 │   │   │   ├── rewardService.js
 ├── utils
 ├── .gitignore                          # git 에 포함되지 않아야 하는 폴더, 파일들을 작성 해놓는 곳
-├── index.js                            # express 미들웨어 포함
+├── moduleConfig.js                            # express 미들웨어 포함
 ├── package-lock.json
 ├── package.json                        # 프로그램 이름, 버전, 필요한 모듈 등 노드 프로그램의 정보를 기술
 └── README.md

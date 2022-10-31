@@ -2,6 +2,9 @@ module.exports = {
     // Success
     SUCCESS: {"isSuccess": true, "code": 1000, "message": "성공"},
     
+    // -----------------
+    // 1. Auth
+    // -----------------
     // 토큰
     SIGNUP_TOKEN_EMPTY: {isSuccess: false, code: 1051, message: "회원가입 토큰이 없습니다"},
     SIGNUP_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1052, message: "회원가입 토큰 에러"},
@@ -31,6 +34,27 @@ module.exports = {
     SIGNUP_PASSWORD_LENGTH_OVER: {isSuccess: false, code: 1124, message: "비밀번호는 8자리 이상, 20자리 이하로 입력해주세요"},
     SIGNUP_PASSWORD_REGEX_WRONG: {isSuccess: false, code: 1125, message: "비밀번호는 최소 한 글자 이상의 영어, 숫자, 특수문자를 포함해서 입력해주세요"},
     
+    // OAuth 인가코드
+    OAUTH_AUTHORIZATION_PROVIDER_WRONG: {isSuccess: false, code: 1131, message: "SNS 플랫폼을 확인해주세요"},
+    
+    // 로그인
+    SIGNIN_LOCAL_PASSPORT: {isSuccess: false, code: 1141, message: "로그인을 할 수 없습니다 / Passport Error"},
+    SIGNIN_LOCAL_USER_NOT_FOUND: {isSuccess: false, code: 1142, message: "사용자 정보를 찾을 수 없습니다"},
+    SIGNIN_LOCAL_USER_STATUS: {isSuccess: false, code: 1143, message: "사용 중지된 계정입니다"},
+    SIGNIN_LOCAL_USER_PASSWORD_WRONG: {isSuccess: false, code: 1144, message: "비밀번호를 다시 확인해주세요"},
+    
+    SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG: {isSuccess: false, code: 1151, message: "카카오 인가코드를 다시 확인해주세요"},
+    SIGNIN_KAKAO_ACCESS_TOKEN_WRONG: {isSuccess: false, code: 1152, message: "카카오 액세스 토큰을 다시 확인해주세요"},
+    SIGNIN_KAKAO_USER_STATUS: {isSuccess: false, code: 1153, message: "사용 중지된 계정입니다"},
+    
+    // OAuth 닉네임 등록
+    OAUTH_ADDINFO_USER_NOT_FOUND: {isSuccess: false, code: 1201, message: "사용자 정보를 찾을 수 없습니다"},
+    OAUTH_ADDINFO_NICKNAME_EMPTY: {isSuccess: false, code: 1202, message: "닉네임을 입력해주세요"},
+    OAUTH_ADDINFO_NICKNAME_LENGTH_OVER: {isSuccess: false, code: 1203, message: "닉네임은 12자 이내로 입력해주세요"},
+    OAUTH_ADDINFO_NICKNAME_REGEX_WRONG: {isSuccess: false, code: 1204, message: "닉네임은 특수문자 없이 입력해주세요"},
+    OAUTH_ADDINFO_NICKNAME_DUPLICATED: {isSuccess: false, code: 1205, message: "중복된 닉네임입니다"},
+    
+    
     // 리프레시 토큰
     ACCESS_TOKEN_EMPTY: {isSuccess: false, code: 1101, message: "토큰이 없습니다"},
     ACCESS_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1102, message: "토큰 인증에 실패했습니다"},
@@ -41,18 +65,12 @@ module.exports = {
     REFRESH_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1113, message: "리프레시 토큰 복호화를 실패했습니다"},
     REFRESH_TOKEN_IP_NOT_MATCH: {isSuccess: false, code: 1114, message: "IP가 일치하지 않습니다. 로그인을 다시 해주세요"},
     REFRESH_TOKEN_SESSION_DELETED: {isSuccess: false, code: 1115, message: "세션 정보가 삭제됐습니다. 로그인을 다시 해주세요"},
-    
-    // 로그인
-    SIGNIN_LOCAL_PASSPORT: {isSuccess: false, code: 1301, message: "로그인을 할 수 없습니다 / Passport Error"},
-    SIGNIN_LOCAL_USER_NOT_FOUND: {isSuccess: false, code: 1302, message: "사용자 정보를 찾을 수 없습니다"},
-    SIGNIN_LOCAL_USER_STATUS: {isSuccess: false, code: 1303, message: "사용 중지된 계정입니다"},
-    SIGNIN_LOCAL_USER_PASSWORD_WRONG: {isSuccess: false, code: 1304, message: "비밀번호를 다시 확인해주세요"},
-    
-    
-    EMAIL_EMPTY: {isSuccess: false, code: 1302, message: "email empty"},
-    EMAIL_VALIDATION_FAIL: {isSuccess: false, code: 1303, message: "email condition does not match"},
 
     
+    
+    // -----------------
+    // 2. User
+    // -----------------
 
     // SignUp
     PASSWORD_VALIDATION_FAIL: {isSuccess: false, code: 1510, message: "password condition does not match"},

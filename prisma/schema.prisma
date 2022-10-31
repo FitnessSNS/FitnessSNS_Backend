@@ -110,7 +110,6 @@ model Session {
 model User {
   id               Int                @id @default(autoincrement())
   provider         String             @db.VarChar(50)
-  provider_id      String?            @db.VarChar(50)
   email            String             @db.VarChar(50)
   password         String?            @db.Text
   salt             String?            @db.Text
@@ -125,7 +124,6 @@ model User {
   UserChallenge    UserChallenge[]
   UserGroup        UserGroup[]
 
-  @@unique([provider, provider_id])
   @@unique([provider, email])
 }
 

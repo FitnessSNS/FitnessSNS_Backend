@@ -1,4 +1,3 @@
-const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const baseResponse = require('../../../config/baseResponseStatus');
@@ -254,7 +253,7 @@ exports.nicknameCheck = async (req, res) => {
     }
     
     // 닉네임 유효성 검사
-    if (!regNickname.test(nickname)) {
+    if (regNickname.test(nickname)) {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_REGEX_WRONG));
     }
     
@@ -264,7 +263,12 @@ exports.nicknameCheck = async (req, res) => {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
     }
     
-    return res.send(response(baseResponse.SUCCESS, {nickname}));
+    // 응답 객체 생성
+    const finalResult = {
+        nickname: nickname
+    };
+    
+    return res.send(response(baseResponse.SUCCESS, finalResult));
 };
 
 /** 로컬계정 회원가입 API
@@ -324,10 +328,170 @@ exports.signUp = async (req, res) => {
     }
     
     // 로컬계정 생성
-    const signUpResponse = await authService.createUser(email, nickname, password);
+    const signUpResponse = await authService.createLocalUser(email, nickname, password);
     
     return res.send(signUpResponse);
-}
+};
+
+/** OAuth 인가 코드 API
+ * [GET] /auth/oauth/authorization
+ */
+exports.authURI = async (req, res) => {
+    const provider = req.query.provider;
+    
+    // SNS 플랫폼 유효성 검사
+    if (provider === undefined || provider !== 'kakao') {
+        return res.send(errResponse(baseResponse.OAUTH_AUTHORIZATION_PROVIDER_WRONG));
+    }
+    
+    // 플랫폼별 인가코드 응답
+    let authResult = {};
+    if (provider === 'kakao') {
+        authResult.authURI = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_REST_API_KEY}&redirect_uri=${process.env.KAKAO_REDIRECT_URI_LOCAL}&response_type=code`;
+    }
+    
+    return res.send(response(baseResponse.SUCCESS, authResult));
+};
+
+/** 로컬 로그인 API
+ * [POST] /auth/signIn/local
+ * body : provider, email, password
+ */
+exports.localSignIn = async (req, res) => {
+    passport.authenticate('local', async (error, user, passportResponse) => {
+        if (error) {
+            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
+        }
+        
+        // 사용자 정보가 없을 경우
+        if (!user) {
+            return res.send(passportResponse);
+        }
+        
+        // JWT 발급
+        await tokenGenerator(req, res, user);
+        
+        const signInResult = {
+            provider: user.provider,
+            email: user.email,
+            nickname: user.nickname,
+            status: user.status
+        };
+    
+        return res.send(response(baseResponse.SUCCESS, signInResult));
+    })(req, res);
+};
+
+/** 소셜 로그인 (카카오) API
+ * [GET] /auth/signIn/kakao
+ * query : code
+ */
+exports.kakaoSignIn = async (req, res) => {
+    // 카카오 API 인가코드
+    const code = req.query.code;
+    
+    // 인가코드로 액세스 토큰 요청
+    const getKakaoTokenResult = await authProvider.getKakaoToken(code);
+    
+    // 액세스 토큰을 받을 수 없는 경우
+    if (getKakaoTokenResult === 'apiError' || getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
+        return res.send(errResponse(baseResponse.SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG));
+    }
+    
+    // 액세스 토큰으로 사용자 정보 요청
+    const accessToken = getKakaoTokenResult.data.access_token;
+    const getKakaoUserInfoResult = await authProvider.getKakaoUserInfo(accessToken);
+    
+    // 사용자 정보를 받을 수 없는 경우
+    if (getKakaoUserInfoResult === 'apiError' || getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
+        return res.send(errResponse(baseResponse.SIGNIN_KAKAO_ACCESS_TOKEN_WRONG));
+    }
+    
+    // 기존에 가입한 계정 확인
+    const email = getKakaoUserInfoResult.data.kakao_account.email;
+    const getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    
+    // 기존에 가입한 계정이 있을 경우
+    let signInResult;
+    if (getUserInfo.length > 0) {
+        // 계정 상태 확인
+        if (getUserInfo[0].status !== 'RUN') {
+            return res.send(errResponse(baseResponse.SIGNIN_KAKAO_USER_STATUS));
+        }
+        
+        // JWT 생성
+        await tokenGenerator(req, res, getUserInfo[0]);
+    
+        // 응답 객체 생성
+        signInResult = {
+            jwtCheck: true,
+            userId: getUserInfo[0].userId,
+            provider: getUserInfo[0].provider,
+            email: getUserInfo[0].email
+        };
+    // 가입한 계정이 없을 경우 신규 가입
+    } else {
+        const createUserResponse = await authService.createOAuthUser('kakao', email);
+        
+        // 정상적으로 계정이 생성되었을 경우에만 응답 객체 생성
+        if (createUserResponse.length > 0) {
+            // 응답 객체 생성
+            signInResult = {
+                jwtCheck: false,
+                userId: createUserResponse[0].userId,
+                provider: createUserResponse[0].provider,
+                email: createUserResponse[0].email
+            };
+        } else {
+            return res.send(createUserResponse);
+        }
+    }
+    
+    return res.send(response(baseResponse.SUCCESS, signInResult));
+};
+
+/** OAuth 추가정보 등록 API
+ * [POST] /auth/oauth/addInfo
+ * body : nickname
+ */
+exports.addInfo = async (req, res) => {
+    const {provider, email} = req.verifiedToken;
+    const {nickname} = req.body;
+    
+    // 가입한 계정 확인
+    const getUserInfo = await authProvider.getUserInfoByEmail(provider, email);
+    if (getUserInfo.length < 1) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
+    }
+    
+    // 닉네임 확인
+    if (nickname === undefined || nickname === null || nickname === '') {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_EMPTY));
+    }
+    
+    // 닉네임 길이 검사
+    const nicknameByteLength = await getByteLength(nickname);
+    if (nicknameByteLength < 0 || nicknameByteLength.length > 12) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_LENGTH_OVER));
+    }
+    
+    // 닉네임 유효성 검사
+    if (regNickname.test(nickname)) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_REGEX_WRONG));
+    }
+    
+    // 닉네임 중복검사
+    const nicknameResult = await authProvider.getUserNickname(nickname);
+    if (nicknameResult !== undefined && nicknameResult.length > 0) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+    }
+   
+    const addUserInfoResponse = await authService.addUserInfo(provider, email, nickname);
+    
+    res.send(addUserInfoResponse);
+};
+
+
 
 /** JWT 재발급 API
  * [GET] /auth/common/refresh
@@ -398,138 +562,7 @@ exports.getRefreshToken = async (req, res) => {
     } else {
         return res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
     }
-}
-
-/** 로그인 API
- * [POST] /app/users
- * body : provider, email, password
- */
-exports.postSignIn = async (req, res) => {
-    passport.authenticate('local', async (error, user, passportResponse) => {
-        if (error) {
-            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
-        }
-        
-        // 사용자 정보가 없을 경우
-        if (!user) {
-            return res.send(passportResponse);
-        }
-        
-        // JWT 발급
-        await tokenGenerator(req, res, user);
-    
-        return res.send(response(baseResponse.SUCCESS));
-    })(req, res);
-}
-
-const accessTokenExtractor = (req)=>{
-    let token = null;
-    if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
-    return token;
 };
-exports.add_account_details = async (req, res, next) => {
-    let target_nickname = req.body.nickname;
-    try {
-        if(!target_nickname) {
-            res.send(errResponse(baseResponse.NICKNAME_EMPTY));
-        }
-        let token = accessTokenExtractor(req);
-        if(token === null || token === undefined){
-            res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
-            return;
-        }
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_KEY); 
-        } catch (e) {
-            if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
-                return;
-            }
-            if (e.name == "TokenExpiredError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
-                return;
-            }
-            next({ status: 500, message: 'internal server error' });
-            return;
-        }
-
-        let user = await authService.getUserByEmail({provider: decoded.provider, email: decoded.email});
-        if(!user){
-            res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
-            return;
-        }
-        if(user.account_details_saved){
-            res.send(errResponse(baseResponse.ACCOUNT_DETAILS_SAVED)); 
-            return;
-        }
-        await userService.addAccountDetails({provider: user.provider, email: user.email, nickname: target_nickname});
-        res.send(response(baseResponse.SUCCESS));
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    } 
-}
-
-//kakao oauth
-exports.kakao_authorize = async (req, res, next) => {
-    let redirect_url = `kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_REST_API_KEY}&redirect_uri=${'http://localhost:3000/auth/kakao/signin'}&response_type=code`;
-    res.send({ redirect_url });
-}
-exports.kakao_signin = async (req, res, next) => {
-    let code = req.query.code;
-    let params = {
-        grant_type: 'authorization_code',
-        client_id: `${process.env.KAKAO_REST_API_KEY}`,
-        redirect_uri: `http://localhost:3000/auth/kakao/signin`,
-        code,
-    }
-    try {
-        const result = await axios({
-            url: 'https://kauth.kakao.com/oauth/token',
-            method: 'post',
-            headers: {
-                'Content-type': 'application/x-www-form-urlencoded;charset=utf-8'
-            },
-            params,
-        });
-        const kakao_user = await axios({
-            url: 'https://kapi.kakao.com/v2/user/me',
-            method: 'post',
-            headers: {
-                'Content-type': 'application/x-www-form-urlencoded;charset=utf-8',
-                'Authorization': `Bearer ${result.data.access_token}`,
-            },
-        });
-
-        let user = await authService.getUserByProviderId({provider: 'kakao', provider_id: kakao_user.data.id});
-
-        if(!user) {
-            console.log('create');
-            user = await userService.createUser({
-                provider: 'kakao',
-                provider_id: kakao_user.data.id,
-                email: kakao_user.data.kakao_account.email, 
-                status: 'RUN',
-                account_details_saved: false,
-                nickname: kakao_user.data.kakao_account.profile.nickname,
-            });
-        }
-        if(user.status == "DELETED" || user.status == "STOP"){
-            res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
-            return;
-        }
-
-        await tokenGenerator(req, res, user);
-
-        res.send(response(baseResponse.SUCCESS));
-        
-    } catch (e){
-        next({status: 500, message: 'internal server error'});
-    }
-}
-
-
 
 
 

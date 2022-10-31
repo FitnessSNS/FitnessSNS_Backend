@@ -95,7 +95,7 @@ exports.createEmailVerification = async (email, code) => {
 };
 
 // 로컬계정 생성
-exports.createUser = async (email, nickname, password) => {
+exports.createLocalUser = async (email, nickname, password) => {
     try {
         // salt 생성
         const createSalt = await randomBytesPromisified(64);
@@ -126,7 +126,36 @@ exports.createUser = async (email, nickname, password) => {
         await prisma.$transaction([createUserInfo, deleteEmailVerification]);
         
         // 계정정보 불러오기
-        const userInfoResult = await authProvider.getUserInfoByEmail(email);
+        const userInfoResult = await authProvider.getUserInfoByEmail('local', email);
+        
+        return response(baseResponse.SUCCESS, userInfoResult[0]);
+    } catch (error) {
+        logger.error(`createUser - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};
+
+// OAuth 계정 생성
+exports.createOAuthUser = async (provider, email) => {
+    try {
+        // OAuth 계정 생성
+        const createUserInfo = prisma.User.create({
+            data: {
+                provider: provider,
+                email: email,
+            }
+        });
+        
+        // 이메일 인증정보 삭제
+        const deleteEmailVerification = prisma.EmailVerification.deleteMany({
+            where: { email: email }
+        });
+        
+        // 트랜잭션 처리
+        await prisma.$transaction([createUserInfo, deleteEmailVerification]);
+        
+        // 계정정보 불러오기
+        const userInfoResult = await authProvider.getUserInfoByEmail(provider, email);
         
         return response(baseResponse.SUCCESS, userInfoResult[0]);
     } catch (error) {
@@ -208,6 +237,30 @@ exports.updateEmailVerification  = async (email, code, verificationCount) => {
     }
 };
 
+// OAuth 추가정보 등록
+exports.addUserInfo = async (provider, email, nickname) => {
+    try {
+        // 계정 추가정보 수정
+        const nicknameBuffer = Buffer.from(nickname);
+        await prisma.User.updateMany({
+            where: {
+                provider: provider,
+                email: email
+            },
+            data: {
+                nickname: nicknameBuffer
+            }
+        });
+        
+        // 계정정보 불러오기
+        const userInfoResult = await authProvider.getUserInfoByEmail(provider, email);
+        
+        return response(baseResponse.SUCCESS, userInfoResult[0]);
+    } catch (error) {
+        logger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};
 
 // DELETE
 // 세션 정보 삭제
@@ -235,21 +288,6 @@ exports.deleteEmailVerification = async (email) => {
 };
 
 
-
-exports.getUserByProviderId = async ({provider, provider_id}) => {
-    try {
-        let user = await prisma.user.findFirst({
-            where : {
-                provider,
-                provider_id: String(provider_id),
-            },
-        });
-        return user;
-    } catch (e) {
-        console.log(e);
-        throw e;
-    }
-}
 
 exports.verifyUser = async (pwfromClient, saltfromDB, hashfromDB) => {
     let hashfromClient = await exports.hashPassword(saltfromDB, pwfromClient);

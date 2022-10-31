@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const pbkdf2Promisified = util.promisify(crypto.pbkdf2);
 
 // Prisma Client
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // 사용자 비밀번호 암호화
@@ -26,12 +26,16 @@ const localConfig = {
 const localVerification =  async (email, password, done) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.user.findFirst({
-            where: {
-                provider: 'local',
-                email: email,
-            }
-        });
+        const userResult = await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT provider, email, password, salt,
+                       CAST(nickname AS CHAR) AS nickname, status
+                FROM User
+                WHERE provider = 'local' AND
+                      email = ${email};
+            `
+        );
+        const user = userResult[0];
         
         // 사용자 정보가 없을 경우
         if (user === null){
