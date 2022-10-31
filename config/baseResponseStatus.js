@@ -46,6 +46,7 @@ module.exports = {
     SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG: {isSuccess: false, code: 1151, message: "카카오 인가코드를 다시 확인해주세요"},
     SIGNIN_KAKAO_ACCESS_TOKEN_WRONG: {isSuccess: false, code: 1152, message: "카카오 액세스 토큰을 다시 확인해주세요"},
     SIGNIN_KAKAO_USER_STATUS: {isSuccess: false, code: 1153, message: "사용 중지된 계정입니다"},
+    SIGNIN_KAKAO_USER_NOT_CREATED: {isSuccess: false, code: 1154, message: "계정이 생성되지 않았습니다"},
     
     // OAuth 닉네임 등록
     OAUTH_ADDINFO_USER_NOT_FOUND: {isSuccess: false, code: 1201, message: "사용자 정보를 찾을 수 없습니다"},
@@ -98,9 +99,8 @@ module.exports = {
     
     
     // ----------------
-    // Provider, Service Error
+    // 3. Reward
     // ----------------
-    // Reward
     CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "Challenge cannot found" },
     
     REWARD_USER_INFO_NOT_FOUND: {"isSuccess": false, code: 3011, message: "User info not found" },
