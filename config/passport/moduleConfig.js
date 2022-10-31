@@ -28,7 +28,7 @@ const localVerification =  async (email, password, done) => {
         // 사용자 정보 불러오기
         const userResult = await prisma.$queryRaw(
             Prisma.sql`
-                SELECT provider, email, password, salt,
+                SELECT id AS userId, provider, email, password, salt,
                        CAST(nickname AS CHAR) AS nickname, status
                 FROM User
                 WHERE provider = 'local' AND

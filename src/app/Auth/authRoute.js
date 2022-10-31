@@ -17,7 +17,7 @@ module.exports = (app) => {
     // OAuth 인가코드 (카카오)
     app.get('/auth/oauth/authorization',authController.authURI);
 
-    // 로그인
+    // 로그인 (OAuth 로그인은 클라이언트에서 호출 안함)
     app.post('/auth/signIn/local', authController.localSignIn);
     app.get('/auth/signIn/kakao', authController.kakaoSignIn);
     

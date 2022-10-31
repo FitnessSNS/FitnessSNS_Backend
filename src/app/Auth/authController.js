@@ -347,7 +347,7 @@ exports.authURI = async (req, res) => {
     // 플랫폼별 인가코드 응답
     let authResult = {};
     if (provider === 'kakao') {
-        authResult.authURI = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_REST_API_KEY}&redirect_uri=${process.env.KAKAO_REDIRECT_URI_LOCAL}&response_type=code`;
+        authResult.authURI = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_REST_API_KEY}&redirect_uri=${process.env.KAKAO_REDIRECT_URI_SERVER}&response_type=code`;
     }
     
     return res.send(response(baseResponse.SUCCESS, authResult));
@@ -372,6 +372,7 @@ exports.localSignIn = async (req, res) => {
         await tokenGenerator(req, res, user);
         
         const signInResult = {
+            userId: user.userId,
             provider: user.provider,
             email: user.email,
             nickname: user.nickname,
@@ -409,45 +410,29 @@ exports.kakaoSignIn = async (req, res) => {
     
     // 기존에 가입한 계정 확인
     const email = getKakaoUserInfoResult.data.kakao_account.email;
-    const getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    let getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
     
-    // 기존에 가입한 계정이 있을 경우
-    let signInResult;
-    if (getUserInfo.length > 0) {
+    // 기존에 가입한 계정이 없을 경우
+    if (getUserInfo.length < 1) {
+        // 신규 가입
+        getUserInfo = await authService.createOAuthUser('kakao', email);
+        
+        // 신규 가입이 안 될 경우
+        if (getUserInfo.length < 1) {
+            return res.send(errResponse(baseResponse.SIGNIN_KAKAO_USER_NOT_CREATED));
+        }
+    // 가입한 계정이 있을 경우
+    } else {
         // 계정 상태 확인
         if (getUserInfo[0].status !== 'RUN') {
             return res.send(errResponse(baseResponse.SIGNIN_KAKAO_USER_STATUS));
         }
-        
-        // JWT 생성
-        await tokenGenerator(req, res, getUserInfo[0]);
-    
-        // 응답 객체 생성
-        signInResult = {
-            jwtCheck: true,
-            userId: getUserInfo[0].userId,
-            provider: getUserInfo[0].provider,
-            email: getUserInfo[0].email
-        };
-    // 가입한 계정이 없을 경우 신규 가입
-    } else {
-        const createUserResponse = await authService.createOAuthUser('kakao', email);
-        
-        // 정상적으로 계정이 생성되었을 경우에만 응답 객체 생성
-        if (createUserResponse.length > 0) {
-            // 응답 객체 생성
-            signInResult = {
-                jwtCheck: false,
-                userId: createUserResponse[0].userId,
-                provider: createUserResponse[0].provider,
-                email: createUserResponse[0].email
-            };
-        } else {
-            return res.send(createUserResponse);
-        }
     }
     
-    return res.send(response(baseResponse.SUCCESS, signInResult));
+    // JWT 생성
+    await tokenGenerator(req, res, getUserInfo[0]);
+    
+    return res.send(response(baseResponse.SUCCESS, getUserInfo[0]));
 };
 
 /** OAuth 추가정보 등록 API
