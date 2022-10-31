@@ -237,6 +237,30 @@ exports.updateEmailVerification  = async (email, code, verificationCount) => {
     }
 };
 
+// OAuth 추가정보 등록
+exports.addUserInfo = async (provider, email, nickname) => {
+    try {
+        // 계정 추가정보 수정
+        const nicknameBuffer = Buffer.from(nickname);
+        await prisma.User.updateMany({
+            where: {
+                provider: provider,
+                email: email
+            },
+            data: {
+                nickname: nicknameBuffer
+            }
+        });
+        
+        // 계정정보 불러오기
+        const userInfoResult = await authProvider.getUserInfoByEmail(provider, email);
+        
+        return response(baseResponse.SUCCESS, userInfoResult[0]);
+    } catch (error) {
+        logger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};
 
 // DELETE
 // 세션 정보 삭제

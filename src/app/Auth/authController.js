@@ -1,4 +1,3 @@
-const axios = require('axios');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const baseResponse = require('../../../config/baseResponseStatus');
@@ -6,7 +5,6 @@ const {response, errResponse} = require('../../../config/response');
 const authService = require('./authService');
 const authProvider = require('./authProvider');
 const {logger} = require('../../../config/winston');
-const {getKakaoUserInfo} = require("./authProvider");
 
 // 이메일 정규표현식
 const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
@@ -435,57 +433,62 @@ exports.kakaoSignIn = async (req, res) => {
     } else {
         const createUserResponse = await authService.createOAuthUser('kakao', email);
         
-        // 응답 객체 생성
-        signInResult = {
-            jwtCheck: false,
-            userId: createUserResponse[0].userId,
-            provider: createUserResponse[0].provider,
-            email: createUserResponse[0].email
-        };
+        // 정상적으로 계정이 생성되었을 경우에만 응답 객체 생성
+        if (createUserResponse.length > 0) {
+            // 응답 객체 생성
+            signInResult = {
+                jwtCheck: false,
+                userId: createUserResponse[0].userId,
+                provider: createUserResponse[0].provider,
+                email: createUserResponse[0].email
+            };
+        } else {
+            return res.send(createUserResponse);
+        }
     }
     
     return res.send(response(baseResponse.SUCCESS, signInResult));
 };
 
-
-const accessTokenExtractor = (req)=>{
-    let token = null;
-    if (req&&req.cookies&&(req.cookies['access_token']!="")) token = req.cookies['access_token'];
-    return token;
-};
-
-
-// TODO: 닉네임 등록 용도???
-exports.add_account_details = async (req, res) => {
-    let target_nickname = req.body.nickname;
+/** OAuth 추가정보 등록 API
+ * [POST] /auth/oauth/addInfo
+ * body : nickname
+ */
+exports.addInfo = async (req, res) => {
+    const {provider, email} = req.verifiedToken;
+    const {nickname} = req.body;
     
-    if(!target_nickname) {
-        res.send(errResponse(baseResponse.NICKNAME_EMPTY));
+    // 가입한 계정 확인
+    const getUserInfo = await authProvider.getUserInfoByEmail(provider, email);
+    if (getUserInfo.length < 1) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
     }
     
-    let token = accessTokenExtractor(req);
-    if(token === null || token === undefined){
-        res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
-        return;
+    // 닉네임 확인
+    if (nickname === undefined || nickname === null || nickname === '') {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_EMPTY));
     }
     
-    let decoded = jwt.verify(token, process.env.JWT_KEY);
+    // 닉네임 길이 검사
+    const nicknameByteLength = await getByteLength(nickname);
+    if (nicknameByteLength < 0 || nicknameByteLength.length > 12) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_LENGTH_OVER));
+    }
+    
+    // 닉네임 유효성 검사
+    if (regNickname.test(nickname)) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_REGEX_WRONG));
+    }
+    
+    // 닉네임 중복검사
+    const nicknameResult = await authProvider.getUserNickname(nickname);
+    if (nicknameResult !== undefined && nicknameResult.length > 0) {
+        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+    }
    
-    let user = await authService.getUserByEmail({provider: decoded.provider, email: decoded.email});
+    const addUserInfoResponse = await authService.addUserInfo(provider, email, nickname);
     
-    if(!user){
-        res.send(errResponse(baseResponse.USER_VALIDATION_FAILURE));
-        return;
-    }
-    
-    if(user.account_details_saved){
-        res.send(errResponse(baseResponse.ACCOUNT_DETAILS_SAVED));
-        return;
-    }
-    
-    await userService.addAccountDetails({provider: user.provider, email: user.email, nickname: target_nickname});
-    
-    res.send(response(baseResponse.SUCCESS));
+    res.send(addUserInfoResponse);
 };
 
 

@@ -21,9 +21,9 @@ module.exports = (app) => {
     app.post('/auth/signIn/local', authController.localSignIn);
     app.get('/auth/signIn/kakao', authController.kakaoSignIn);
     
+    // OAuth 추가정보 등록
+    app.post('/auth/oauth/addInfo', authenticate, authController.addInfo);
     
-    // OAuth (닉네임 등록 용도?)
-    app.post('/auth/oauth/addinfo', authController.add_account_details)
 
     // JWT 재발급
     app.get('/auth/common/refresh', authController.getRefreshToken);
