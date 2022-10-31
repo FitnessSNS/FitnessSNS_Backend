@@ -107,7 +107,7 @@ exports.getKakaoToken = async (code) => {
         const params = {
             grant_type: 'authorization_code',
             client_id: `${process.env.KAKAO_REST_API_KEY}`,
-            redirect_uri: `http://localhost:3000/auth/signIn/kakao`,
+            redirect_uri: `${process.env.KAKAO_REDIRECT_URI_SERVER}`,
             code: code,
         }
     
