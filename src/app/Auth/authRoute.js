@@ -19,7 +19,7 @@ module.exports = (app) => {
 
     // 로그인
     app.post('/auth/signIn/local', authController.localSignIn);
-    app.get('/auth/signIn/kakao', authController.kakao_signin);
+    app.get('/auth/signIn/kakao', authController.kakaoSignIn);
     
     
     // OAuth (닉네임 등록 용도?)
