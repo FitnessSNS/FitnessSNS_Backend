@@ -128,9 +128,9 @@ exports.postUserRunningStop = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningEnd = async function (req, res) {
-    const { email } = req.user;
+    const {provider, email} = req.verifiedToken;
     const forceEnd = req.query.forceEnd;
-    const { longitude, latitude } = req.body;
+    const {longitude, latitude} = req.body;
     
     // 강제 종료 여부 확인
     if (forceEnd !== true && forceEnd !== false) {
@@ -148,7 +148,7 @@ exports.postUserRunningEnd = async function (req, res) {
     }
     
     // 운동 기록 저장 후 종료
-    const postUserRunningEndResult = await rewardService.updateUserRunningEnd(email, forceEnd, longitude, latitude);
+    const postUserRunningEndResult = await rewardService.updateUserRunningEnd(provider, email, forceEnd, longitude, latitude);
     
     return res.send(postUserRunningEndResult);
 };

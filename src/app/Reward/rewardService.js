@@ -632,38 +632,25 @@ exports.updateUserRunningStop = async (provider, email, longitude, latitude) => 
 };
 
 // 운동 종료
-exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
+exports.updateUserRunningEnd = async (provider, email, forceEnd, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.User.findMany({
-            where: {
-                email: email,
-                status: 'RUN'
-            }
-        });
+        const user =  await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
     
         // 사용자 정보가 없을 경우 에러 발생
         if (user.length < 1) {
             return errResponse(baseResponse.RUNNING_END_USER_NOT_FOUND);
         }
-    
-        // 사용자 닉네임 불러오기
-        const nickname = await prisma.UserProfile.findMany({
-            where: {
-                User: {
-                    email: email
-                }
-            },
-            select: {
-                nickname: true
-            }
-        });
-    
-        // 닉네임이 없을 경우 에러 발생
-        if (nickname.length < 1) {
-            return errResponse(baseResponse.RUNNING_END_USER_NICKNAME_NOT_FOUND);
-        }
-    
+   
         // 오늘 날짜
         const today = new Date();
         const todayYear = today.getFullYear();
@@ -683,7 +670,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 운동 기록 ID 조회
             userExercise = await prisma.Exercise.findMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     created_at: {
                         gte: todayCheck,
                         lt: tomorrowCheck
@@ -695,7 +682,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 이전 운동 위치 수정
             const locationChange = await prisma.ExerciseLocation.updateMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     status: 'RUN'
                 },
                 data: {
@@ -711,7 +698,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 운동 기록 수정 (가장 최근 위치로 저장)
             const exerciseChange = await prisma.Exercise.updateMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     created_at: {
                         gte: todayCheck,
                         lt: tomorrowCheck
@@ -731,7 +718,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 이전 운동 위치 불러오기
             const priorLocation = await prisma.ExerciseLocation.findMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     status: 'RUN'
                 },
                 select: {
@@ -751,12 +738,12 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             const distance = await getDistanceFromLatLon(priorLocation[0].longitude, priorLocation[0].latitude, longitude, latitude);
         
             // 운동 시간 간격 계산
-            const timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
+            let timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
         
             // 이전 운동 위치 수정
             const locationChange = await prisma.ExerciseLocation.updateMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     status: 'RUN'
                 },
                 data: {
@@ -779,9 +766,9 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 운동 시간 간격이 0보다 작거나 같은 경우
             if (timeDiff <= 0) {
                 return errResponse(baseResponse.RUNNING_END_TIME_LESS_ZERO);
-                // 운동 시간 간격이 3시간 이상일 경우
+            // 운동 시간 간격이 3시간 이상일 경우
             } else if (timeDiff >= 10800000) {
-                return errResponse(baseResponse.RUNNING_END_TIME_OUT);
+                timeDiff = 10800000;
             }
         
             // 날짜 비교용 오늘, 내일 날짜 생성
@@ -793,7 +780,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 운동 기록 조회
             userExercise = await prisma.Exercise.findMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     created_at: {
                         gte: todayCheck,
                         lt: tomorrowCheck
@@ -815,7 +802,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
             // 운동 기록 수정
             const exerciseChange = await prisma.Exercise.updateMany({
                 where: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     created_at: {
                         gte: todayCheck,
                         lt: tomorrowCheck
@@ -827,7 +814,6 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
                     time: addTime,
                     calorie: addCalorie,
                     updated_at: today,
-                    status: 'STOP'
                 }
             });
         
@@ -849,7 +835,7 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
         // 응답 객체 생성
         const result = {
             user_id: user[0].id,
-            nickname: nickname[0].nickname,
+            nickname: user[0].nickname,
             challenge_goal: 5000,
             time: exerciseTime,
             distance: getUserExercise.distance,
@@ -859,8 +845,10 @@ exports.updateUserRunningEnd = async (email, forceEnd, longitude, latitude) => {
     
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        console.log(error);
         logger.error(`createUserRunningEnd - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
+
+
+// TODO: 다음날 이전 운동기록 상태 변경
