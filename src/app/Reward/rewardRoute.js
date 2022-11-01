@@ -2,13 +2,8 @@ const reward = require('./rewardController');
 const {authenticate} = require("../../middleware/auth");
 
 module.exports = (app) => {
-    // 챌린지 등록 API
-    app.route('/rewards/challenge')
-        .get(reward.getChallenge)
-        .post(reward.postChallenge);
-    
-    // 리워드 페이지 접속 API
-    app.route('/rewards/users').get(authenticate, reward.getUserInfo);
+    // 리워드 메인 API
+    app.route('/rewards/users').get(authenticate, reward.getRewardInfo);
     
     // 운동 선택 API
     app.route('/rewards/running/exercise').get(authenticate, reward.checkUserExerciseGroup);
@@ -24,4 +19,10 @@ module.exports = (app) => {
     
     // 운동 종료 API
     app.route('/rewards/running/end').post(authenticate, reward.postUserRunningEnd);
+    
+    
+    // 챌린지 등록 API
+    app.route('/rewards/challenge')
+        .get(reward.getChallenge)
+        .post(reward.postChallenge);
 }

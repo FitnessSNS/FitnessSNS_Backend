@@ -9,43 +9,15 @@ const specialCharacter = /[^\w\sㄱ-힣]|[\_]/g;
 // 경도, 위도 검사
 const coordinateCheck = /^\d+\.\d+$/;
 
-/** 챌린지 확인 API
- * [GET] /app/rewards/challenge
- * body :
+/** 리워드 매인 API
+ * [GET] /rewards/users
  */
-exports.getChallenge = async function (req, res) {
-    // TODO: 사용자 인증 추가
+exports.getRewardInfo = async function (req, res) {
+    const {provider, email} = req.verifiedToken;
     
-    const getchallengeResult = await rewardProvider.retrieveChallenge();
+    const getRewardInfoResult = await rewardProvider.retrieveUserInfo(provider, email);
     
-    if (getchallengeResult === 'NoChallenges') {
-        return res.send(errResponse(baseResponse.CHALLENGE_NOT_FOUND));
-    }
-    
-    return res.send(response(baseResponse.SUCCESS, getchallengeResult));
-};
-
-/** 챌린지 등록 API
- * [POST] /app/rewards/challenge
- * body : title, content, condition, end_date
- */
-exports.postChallenge = async function (req, res) {
-    const { title, content, condition, end_date } = req.body;
-    
-    const postChallengeResult = await rewardService.createChallenge(title, content, condition, end_date)
-    
-    return res.send(postChallengeResult);
-};
-
-/** 리워드 페이지 사용자 정보 API
- * [GET] /app/rewards/users
- */
-exports.getUserInfo = async function (req, res) {
-    const { email } = req.user;
-    
-    const getUserInfoResult = await rewardProvider.retrieveUserInfo(email);
-    
-    return res.send(getUserInfoResult);
+    return res.send(getRewardInfoResult);
 };
 
 /** 운동 선택 API
@@ -53,10 +25,15 @@ exports.getUserInfo = async function (req, res) {
  * query : type
  */
 exports.checkUserExerciseGroup = async function (req, res) {
-    const { email } = req.user;
-    const { type } = req.query;
+    const {provider, email} = req.verifiedToken;
+    const {type} = req.query;
     
-    const getUserExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(email, type);
+    // 운동 종류 유효성 검사
+    if (type !== 'P' && type !== 'G') {
+        return res.send(errResponse(baseResponse.RUNNING_CHOOSE_EXERCISE_TYPE_WRONG));
+    }
+    
+    const getUserExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(provider, email, type);
     
     return res.send(getUserExerciseGroupResult);
 };
@@ -66,8 +43,8 @@ exports.checkUserExerciseGroup = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunning = async function (req, res) {
-    const { email } = req.user;
-    const { longitude, latitude } = req.body;
+    const {provider, email} = req.verifiedToken;
+    const {longitude, latitude} = req.body;
     
     // 경도와 위도 정보가 없을 경우
     if (longitude === undefined || latitude === undefined) {
@@ -79,7 +56,7 @@ exports.postUserRunning = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_TYPE_WRONG));
     }
     
-    const postUserRunningResult = await rewardService.createUserRunning(email, longitude, latitude);
+    const postUserRunningResult = await rewardService.createUserRunning(provider, email, longitude, latitude);
     
     return res.send(postUserRunningResult);
 };
@@ -174,4 +151,35 @@ exports.postUserRunningEnd = async function (req, res) {
     const postUserRunningEndResult = await rewardService.updateUserRunningEnd(email, forceEnd, longitude, latitude);
     
     return res.send(postUserRunningEndResult);
+};
+
+
+
+
+/** 챌린지 확인 API
+ * [GET] /app/rewards/challenge
+ * body :
+ */
+exports.getChallenge = async function (req, res) {
+    const {provider, email} = req.verifiedToken;
+    
+    const getchallengeResult = await rewardProvider.retrieveChallenge();
+    
+    if (getchallengeResult === 'NoChallenges') {
+        return res.send(errResponse(baseResponse.CHALLENGE_NOT_FOUND));
+    }
+    
+    return res.send(response(baseResponse.SUCCESS, getchallengeResult));
+};
+
+/** 챌린지 등록 API
+ * [POST] /app/rewards/challenge
+ * body : title, content, condition, end_date
+ */
+exports.postChallenge = async function (req, res) {
+    const { title, content, condition, end_date } = req.body;
+    
+    const postChallengeResult = await rewardService.createChallenge(title, content, condition, end_date)
+    
+    return res.send(postChallengeResult);
 };

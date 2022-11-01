@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const {logger} = require('../../../config/winston');
 const baseResponse = require('../../../config/baseResponseStatus');
@@ -88,42 +88,29 @@ exports.createChallenge = async (title, content, condition, end_date) => {
 };
 
 // 운동 시작
-exports.createUserRunning = async (email, longitude, latitude) => {
+exports.createUserRunning = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.User.findMany({
-            where: {
-                email: email,
-                status: 'RUN'
-            }
-        });
+        const user =  await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
         
         // 사용자 정보가 없을 경우 에러 발생
         if (user.length < 1) {
             return errResponse(baseResponse.RUNNING_USER_NOT_FOUND);
         }
     
-        // 사용자 닉네임 불러오기
-        const nickname = await prisma.UserProfile.findMany({
-            where: {
-                User: {
-                    email: email
-                }
-            },
-            select: {
-                nickname: true
-            }
-        });
-        
-        // 닉네임이 없을 경우 에러 발생
-        if (nickname.length < 1) {
-            return errResponse(baseResponse.RUNNING_USER_NICKNAME_NOT_FOUND);
-        }
-        
         // 운동 위치 조회
         const userExerciseLocation = await prisma.ExerciseLocation.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             }
         });
@@ -136,7 +123,7 @@ exports.createUserRunning = async (email, longitude, latitude) => {
         // 운동 위치 생성
         const exerciseLocation = await prisma.ExerciseLocation.create({
             data: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 longitude: longitude,
                 latitude: latitude
             }
@@ -155,7 +142,7 @@ exports.createUserRunning = async (email, longitude, latitude) => {
         // 운동 기록 조회
         const userExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -168,7 +155,7 @@ exports.createUserRunning = async (email, longitude, latitude) => {
         if (userExercise.length < 1) {
             await prisma.Exercise.create({
                 data: {
-                    user_id: user[0].id,
+                    user_id: user[0].userId,
                     distance: 0,
                     time: new Date(0),
                     calorie: 0
@@ -204,14 +191,13 @@ exports.createUserRunning = async (email, longitude, latitude) => {
         const startTime = `${hours}:${minutes}:${seconds}`;
        
         const result = {
-            user_id: user[0].id,
-            nickname: nickname[0].nickname,
+            user_id: user[0].userId,
+            nickname: user[0].nickname,
             startTime: startTime
         }
     
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        console.log(error);
         logger.error(`createUserRunning - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
