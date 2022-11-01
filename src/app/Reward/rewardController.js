@@ -103,8 +103,8 @@ exports.postUserRunningCheck = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningStop = async function (req, res) {
-    const { email } = req.user;
-    const { longitude, latitude } = req.body;
+    const {provider, email} = req.verifiedToken;
+    const {longitude, latitude} = req.body;
     
     // 경도와 위도 정보가 없을 경우
     if (longitude === undefined || latitude === undefined) {
@@ -117,7 +117,7 @@ exports.postUserRunningStop = async function (req, res) {
     }
     
     // 현재 위치까지 운동 기록 저장
-    const postUserRunningStopResult = await rewardService.updateUserRunningStop(email, longitude, latitude);
+    const postUserRunningStopResult = await rewardService.updateUserRunningStop(provider, email, longitude, latitude);
     
     return res.send(postUserRunningStopResult);
 };

@@ -81,7 +81,6 @@ exports.createChallenge = async (title, content, condition, end_date) => {
     
         return response(baseResponse.SUCCESS, challenge);
     } catch (error) {
-        console.log(error);
         logger.error(`createChallenge - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
@@ -366,7 +365,6 @@ exports.createUserRunningCheck = async (provider, email, longitude, latitude) =>
     
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        console.log(error);
         logger.error(`createUserRunningCheck - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
@@ -451,49 +449,35 @@ exports.updateUserRunningCheck = async (provider, email, longitude, latitude) =>
         
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        console.log(error);
         logger.error(`createUserRunningCheck - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
 // 운동 일시정지
-exports.updateUserRunningStop = async (email, longitude, latitude) => {
+exports.updateUserRunningStop = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.User.findMany({
-            where: {
-                email: email,
-                status: 'RUN'
-            }
-        });
+        const user =  await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
         
         // 사용자 정보가 없을 경우 에러 발생
         if (user.length < 1) {
             return errResponse(baseResponse.RUNNING_STOP_USER_NOT_FOUND);
         }
-        
-        // 사용자 닉네임 불러오기
-        const nickname = await prisma.UserProfile.findMany({
-            where: {
-                User: {
-                    email: email
-                }
-            },
-            select: {
-                nickname: true
-            }
-        });
-        
-        // 닉네임이 없을 경우 에러 발생
-        if (nickname.length < 1) {
-            return errResponse(baseResponse.RUNNING_STOP_USER_NICKNAME_NOT_FOUND);
-        }
-
+       
         // 이전 운동 위치 불러오기
         const priorLocation = await prisma.ExerciseLocation.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             },
             select: {
@@ -522,7 +506,7 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         // 이전 운동 위치 수정
         const locationChange = await prisma.ExerciseLocation.updateMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             },
             data: {
@@ -558,7 +542,7 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         // 운동 기록 조회
         const userExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -594,7 +578,7 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         // 운동 기록 수정
         exerciseChange = await prisma.Exercise.updateMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -617,7 +601,7 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         // 운동 기록 재조회
         const getUserExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -631,7 +615,7 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         // 응답 객체 생성
         const result = {
             user_id: user[0].id,
-            nickname: nickname[0].nickname,
+            nickname: user[0].nickname,
             check_time: checkTime,
             challenge_goal: 5000,
             time: exerciseTime,
@@ -642,7 +626,6 @@ exports.updateUserRunningStop = async (email, longitude, latitude) => {
         
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        console.log(error);
         logger.error(`createUserRunningStop - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
