@@ -67,9 +67,9 @@ exports.postUserRunning = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningCheck = async function (req, res) {
-    const { email } = req.user;
+    const {provider, email} = req.verifiedToken;
     const isRestart = req.query.isRestart;
-    const { longitude, latitude } = req.body;
+    const {longitude, latitude} = req.body;
     
     // 운동 재시작 여부 타입 확인
     if (isRestart !== true && isRestart !== false) {
@@ -88,11 +88,11 @@ exports.postUserRunningCheck = async function (req, res) {
     
     // 일시정지 후 재시작인 경우
     if (isRestart) {
-        const postUserRunningRestartResult = await rewardService.updateUserRunningCheck(email, longitude, latitude);
+        const postUserRunningRestartResult = await rewardService.updateUserRunningCheck(provider, email, longitude, latitude);
     
         return res.send(postUserRunningRestartResult);
     } else {
-        const postUserRunningCheckResult = await rewardService.createUserRunningCheck(email, longitude, latitude);
+        const postUserRunningCheckResult = await rewardService.createUserRunningCheck(provider, email, longitude, latitude);
     
         return res.send(postUserRunningCheckResult);
     }

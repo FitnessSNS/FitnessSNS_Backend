@@ -163,37 +163,29 @@ exports.createUserRunning = async (provider, email, longitude, latitude) => {
             });
         }
 
-        // 시작 시간 설정
-        let hours = exerciseLocation.created_at.getHours();
-        if (hours < 10) {
-            hours = `0${hours}`;
-        } else {
-            hours = String(hours);
-        }
+        // 운동 기록 재조회
+        const getUserExercise = await prisma.Exercise.findMany({
+            where: {
+                user_id: user[0].userId,
+                created_at: {
+                    gte: todayCheck,
+                    lt: tomorrowCheck
+                },
+                status: 'RUN'
+            }
+        });
+        const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
         
-        // 시작 분 설정
-        let minutes = exerciseLocation.created_at.getMinutes();
-        if (minutes < 10) {
-            minutes = `0${minutes}`;
-        } else {
-            minutes = String(minutes);
-        }
-        
-        // 시작 초 설정
-        let seconds = exerciseLocation.created_at.getSeconds();
-        if (seconds < 10) {
-            seconds = `0${seconds}`;
-        } else {
-            seconds = String(seconds);
-        }
-        
-        // 시작 시간 설정
-        const startTime = `${hours}:${minutes}:${seconds}`;
-       
+        // 응답 객체 생성
         const result = {
             user_id: user[0].userId,
             nickname: user[0].nickname,
-            startTime: startTime
+            check_time: '00:00:00',
+            challenge_goal: 5000,
+            time: exerciseTime,
+            distance: 0,
+            calorie: 0,
+            forceEnd: false
         }
     
         return response(baseResponse.SUCCESS, result);
@@ -204,42 +196,29 @@ exports.createUserRunning = async (provider, email, longitude, latitude) => {
 };
 
 // 운동 진행
-exports.createUserRunningCheck = async (email, longitude, latitude) => {
+exports.createUserRunningCheck = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.User.findMany({
-            where: {
-                email: email,
-                status: 'RUN'
-            }
-        });
+        const user =  await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
         
         // 사용자 정보가 없을 경우 에러 발생
         if (user.length < 1) {
             return errResponse(baseResponse.RUNNING_CHECK_USER_NOT_FOUND);
         }
-    
-        // 사용자 닉네임 불러오기
-        const nickname = await prisma.UserProfile.findMany({
-            where: {
-                User: {
-                    email: email
-                }
-            },
-            select: {
-                nickname: true
-            }
-        });
-        
-        // 닉네임이 없을 경우 에러 발생
-        if (nickname.length < 1) {
-            return errResponse(baseResponse.RUNNING_CHECK_USER_NICKNAME_NOT_FOUND);
-        }
-        
+       
         // 이전 운동 위치 불러오기
         const priorLocation = await prisma.ExerciseLocation.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             },
             select: {
@@ -280,7 +259,7 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
         // 이전 운동 위치 업데이트
         const locationChange = await prisma.ExerciseLocation.updateMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             },
             data: {
@@ -304,7 +283,7 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
         // 운동 기록 조회
         const userExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -339,7 +318,7 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
         // 운동 기록 수정
         const exerciseChange = await prisma.Exercise.updateMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -362,7 +341,7 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
         // 운동 기록 재조회
         const getUserExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -375,8 +354,8 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
     
         // 응답 객체 생성
         const result = {
-            user_id: user[0].id,
-            nickname: nickname[0].nickname,
+            user_id: user[0].userId,
+            nickname: user[0].nickname,
             check_time: checkTime,
             challenge_goal: 5000,
             time: exerciseTime,
@@ -394,36 +373,23 @@ exports.createUserRunningCheck = async (email, longitude, latitude) => {
 };
 
 // 운동 진행 (재시작)
-exports.updateUserRunningCheck = async (email, longitude, latitude) => {
+exports.updateUserRunningCheck = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
-        const user = await prisma.User.findMany({
-            where: {
-                email: email,
-                status: 'RUN'
-            }
-        });
+        const user =  await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
         
         // 사용자 정보가 없을 경우 에러 발생
         if (user.length < 1) {
             return errResponse(baseResponse.RUNNING_CHECK_USER_NOT_FOUND);
-        }
-        
-        // 사용자 닉네임 불러오기
-        const nickname = await prisma.UserProfile.findMany({
-            where: {
-                User: {
-                    email: email
-                }
-            },
-            select: {
-                nickname: true
-            }
-        });
-        
-        // 닉네임이 없을 경우 에러 발생
-        if (nickname.length < 1) {
-            return errResponse(baseResponse.RUNNING_CHECK_USER_NICKNAME_NOT_FOUND);
         }
         
         // 오늘 날짜
@@ -435,7 +401,7 @@ exports.updateUserRunningCheck = async (email, longitude, latitude) => {
         // 이전 운동 위치 수정
         const locationChange = await prisma.ExerciseLocation.updateMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 status: 'RUN'
             },
             data: {
@@ -459,7 +425,7 @@ exports.updateUserRunningCheck = async (email, longitude, latitude) => {
         // 운동 기록 재조회
         const getUserExercise = await prisma.Exercise.findMany({
             where: {
-                user_id: user[0].id,
+                user_id: user[0].userId,
                 created_at: {
                     gte: todayCheck,
                     lt: tomorrowCheck
@@ -474,7 +440,7 @@ exports.updateUserRunningCheck = async (email, longitude, latitude) => {
         // 응답 객체 생성
         const result = {
             user_id: user[0].id,
-            nickname: nickname[0].nickname,
+            nickname: user[0].nickname,
             check_time: '00:00:00',
             challenge_goal: 5000,
             time: exerciseTime,
