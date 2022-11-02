@@ -149,6 +149,7 @@ model Exercise {
   distance   Int      @default(0)
   time       DateTime @default(dbgenerated("'00:00:00'")) @db.Time(0)
   calorie    Decimal  @default(0.0000) @db.Decimal(8, 4)
+  image      String?  @db.Text
   created_at DateTime @default(now()) @db.DateTime(0)
   updated_at DateTime @default(now()) @db.DateTime(0)
   status     String   @default("RUN") @db.VarChar(10)
