@@ -22,7 +22,7 @@ module.exports = (app) => {
     app.route('/rewards/running/end').post(authenticate, reward.postUserRunningEnd);
     
     // 운동 사진 인증 API
-    app.route('/rewards/running/imageProof')
+    app.route('/rewards/running/proofImage')
         .post(authenticate, uploadExerciseImage.single('image'), reward.postRunningImage);
     
     

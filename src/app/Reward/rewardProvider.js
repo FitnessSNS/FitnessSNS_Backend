@@ -344,3 +344,17 @@ exports.retrieveUserExercise = async (userId, today, tomorrow) => {
         throw error;
     }
 };
+
+// 사용자 운동 기록 조회 (운동 기록 ID)
+exports.retrieveUserExerciseById = async (exerciseId) => {
+    try {
+        return await prisma.Exercise.findUnique({
+            where: {
+                id: exerciseId
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExerciseById - database error`);
+        throw error;
+    }
+};

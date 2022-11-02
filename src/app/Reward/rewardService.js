@@ -4,6 +4,7 @@ const {logger} = require('../../../config/winston');
 const rewardProvider = require('./rewardProvider');
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
+const {deleteExerciseImage} = require('../../middleware/exerciseImageConnector');
 
 // 위도, 경도 거리 계산
 const getDistanceFromLatLon = async (lng1, lat1, lng2, lat2) => {
@@ -158,6 +159,7 @@ exports.startUserRunning = async (provider, email, longitude, latitude) => {
             time: exerciseTime,
             distance: 0,
             calorie: 0,
+            image: getUserExercise[0].image,
             forceEnd: false
         }
     
@@ -290,6 +292,7 @@ exports.checkUserRunning = async (provider, email, longitude, latitude) => {
             time: exerciseTime,
             distance: getUserExercise[0].distance,
             calorie: Math.floor(getUserExercise[0].calorie),
+            image: getUserExercise[0].image,
             forceEnd: forceEnd
         }
     
@@ -352,6 +355,7 @@ exports.restartUserRunning = async (provider, email, longitude, latitude) => {
             time: exerciseTime,
             distance: getUserExercise[0].distance,
             calorie: Math.floor(getUserExercise[0].calorie),
+            image: getUserExercise[0].image,
             forceEnd: forceEnd
         }
         
@@ -485,6 +489,7 @@ exports.pauseUserRunning = async (provider, email, longitude, latitude) => {
             time: exerciseTime,
             distance: getUserExercise[0].distance,
             calorie: Math.floor(getUserExercise[0].calorie),
+            image: getUserExercise[0].image,
             forceEnd: forceEnd
         }
         
@@ -646,6 +651,7 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
             time: exerciseTime,
             distance: getUserExercise[0].distance,
             calorie: Math.floor(getUserExercise[0].calorie),
+            image: getUserExercise[0].image,
             forceEnd: forceEnd
         }
     
@@ -656,3 +662,62 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
     }
 };
 
+// 운동 사진 등록
+exports.createRunningImage = async (provider, email, exerciseId, imageLink) => {
+    try {
+        // 사용자 정보 불러오기
+        const user = await rewardProvider.retrieveUserInfo(provider, email);
+        
+        // 사용자 정보가 없을 경우 에러 발생
+        if (user.length < 1) {
+            return errResponse(baseResponse.RUNNING_PROOF_USER_NOT_FOUND);
+        }
+        
+        // 운동 기록 조회
+        const userExercise = await rewardProvider.retrieveUserExerciseById(exerciseId);
+        if (userExercise === null) {
+            return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_FOUND);
+        }
+        
+        // 운동이 종료되지 않을 경우
+        if (userExercise.status === 'RUN') {
+            return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_END);
+        }
+    
+        // 운동 인증 사진 추가
+        await prisma.Exercise.update({
+            where: {
+                id: exerciseId,
+            },
+            data: {
+                image: imageLink
+            }
+        });
+    
+        // 운동 기록 재조회
+        const getUserExerciseById = await rewardProvider.retrieveUserExerciseById(exerciseId);
+        const exerciseTime = getExerciseTime(getUserExerciseById.time.getTime());
+    
+        // 응답 객체 생성
+        const result = {
+            exercise_id: getUserExerciseById.id,
+            user_id: user[0].userId,
+            nickname: user[0].nickname,
+            challenge_goal: 5000,
+            time: exerciseTime,
+            distance: getUserExerciseById.distance,
+            calorie: Math.floor(getUserExerciseById.calorie),
+            image: getUserExerciseById.image,
+            forceEnd: null
+        }
+    
+        return response(baseResponse.SUCCESS, result);
+    } catch (error) {
+        // 등록된 사진 삭제
+        const imageName = imageLink.slice(61);
+        await deleteExerciseImage(imageName);
+        
+        logger.error(`createRunningImage - database error\n: ${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};

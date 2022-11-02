@@ -56,9 +56,9 @@ exports.postUserRunning = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_TYPE_WRONG));
     }
     
-    const postUserRunningResult = await rewardService.startUserRunning(provider, email, longitude, latitude);
+    const postUserRunningResponse = await rewardService.startUserRunning(provider, email, longitude, latitude);
     
-    return res.send(postUserRunningResult);
+    return res.send(postUserRunningResponse);
 };
 
 /** 운동 진행 API
@@ -88,13 +88,13 @@ exports.postUserRunningCheck = async function (req, res) {
     
     // 일시정지 후 재시작인 경우
     if (isRestart) {
-        const postUserRunningRestartResult = await rewardService.restartUserRunning(provider, email, longitude, latitude);
+        const postUserRunningRestartResponse = await rewardService.restartUserRunning(provider, email, longitude, latitude);
     
-        return res.send(postUserRunningRestartResult);
+        return res.send(postUserRunningRestartResponse);
     } else {
-        const postUserRunningCheckResult = await rewardService.checkUserRunning(provider, email, longitude, latitude);
+        const postUserRunningCheckResponse = await rewardService.checkUserRunning(provider, email, longitude, latitude);
     
-        return res.send(postUserRunningCheckResult);
+        return res.send(postUserRunningCheckResponse);
     }
 };
 
@@ -117,9 +117,9 @@ exports.postUserRunningStop = async function (req, res) {
     }
     
     // 현재 위치까지 운동 기록 저장
-    const postUserRunningStopResult = await rewardService.pauseUserRunning(provider, email, longitude, latitude);
+    const postUserRunningStopResponse = await rewardService.pauseUserRunning(provider, email, longitude, latitude);
     
-    return res.send(postUserRunningStopResult);
+    return res.send(postUserRunningStopResponse);
 };
 
 /** 운동 종료 API
@@ -148,28 +148,35 @@ exports.postUserRunningEnd = async function (req, res) {
     }
     
     // 운동 기록 저장 후 종료
-    const postUserRunningEndResult = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
+    const postUserRunningEndResponse = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
     
-    return res.send(postUserRunningEndResult);
+    return res.send(postUserRunningEndResponse);
 };
 
 /** 운동 사진 인증 API
  * [POST] /app/rewards/running/imageProof
- * body : image
+ * body : exercise_id, image
  */
 exports.postRunningImage = async function (req, res) {
     const {provider, email} = req.verifiedToken;
+    let {exercise_id} = req.body
+    exercise_id = Number(exercise_id);
     
     // 운동 사진 불러오기
     const imageLink = req.file.location;
-    if (imageLink === undefined || imageLink === null) {
-        return res.send(errResponse(baseResponse.RUNNING_END_IMAGE_EMPTY));
+    if (imageLink === undefined || imageLink === null || imageLink === '') {
+        return res.send(errResponse(baseResponse.RUNNING_PROOF_IMAGE_EMPTY));
     }
     
-    // 운동 기록 저장 후 종료
-    const postUserRunningEndResult = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
+    // 운동 ID 유효성 검사
+    if (exercise_id === undefined || exercise_id === null || exercise_id === '') {
+        return res.send(errResponse(baseResponse.RUNNING_PROOF_EXERCISE_ID_EMPTY));
+    }
     
-    return res.send(postUserRunningEndResult);
+    // 운동 기록에 사진 저장
+    const postRunningImageResponse = await rewardService.createRunningImage(provider, email, exercise_id, imageLink);
+    
+    return res.send(postRunningImageResponse);
 };
 
 
