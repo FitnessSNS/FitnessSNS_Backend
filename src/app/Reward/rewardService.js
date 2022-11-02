@@ -87,7 +87,7 @@ exports.createChallenge = async (title, content, condition, end_date) => {
 };
 
 // 운동 시작
-exports.createUserRunning = async (provider, email, longitude, latitude) => {
+exports.startUserRunning = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
         const user =  await prisma.$queryRaw(
@@ -195,7 +195,7 @@ exports.createUserRunning = async (provider, email, longitude, latitude) => {
 };
 
 // 운동 진행
-exports.createUserRunningCheck = async (provider, email, longitude, latitude) => {
+exports.checkUserRunning = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
         const user =  await prisma.$queryRaw(
@@ -365,13 +365,13 @@ exports.createUserRunningCheck = async (provider, email, longitude, latitude) =>
     
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        logger.error(`createUserRunningCheck - database error\n: ${error.message} \n${JSON.stringify(error)}`);
+        logger.error(`checkUserRunning - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
 // 운동 진행 (재시작)
-exports.updateUserRunningCheck = async (provider, email, longitude, latitude) => {
+exports.restartUserRunning = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
         const user =  await prisma.$queryRaw(
@@ -449,13 +449,13 @@ exports.updateUserRunningCheck = async (provider, email, longitude, latitude) =>
         
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        logger.error(`createUserRunningCheck - database error\n: ${error.message} \n${JSON.stringify(error)}`);
+        logger.error(`checkUserRunning - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
 // 운동 일시정지
-exports.updateUserRunningStop = async (provider, email, longitude, latitude) => {
+exports.pauseUserRunning = async (provider, email, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
         const user =  await prisma.$queryRaw(
@@ -626,13 +626,13 @@ exports.updateUserRunningStop = async (provider, email, longitude, latitude) => 
         
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        logger.error(`createUserRunningStop - database error\n: ${error.message} \n${JSON.stringify(error)}`);
+        logger.error(`pauseUserRunning - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
 // 운동 종료
-exports.updateUserRunningEnd = async (provider, email, forceEnd, longitude, latitude) => {
+exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) => {
     try {
         // 사용자 정보 불러오기
         const user =  await prisma.$queryRaw(
@@ -845,10 +845,8 @@ exports.updateUserRunningEnd = async (provider, email, forceEnd, longitude, lati
     
         return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        logger.error(`createUserRunningEnd - database error\n: ${error.message} \n${JSON.stringify(error)}`);
+        logger.error(`endUserRunning - database error\n: ${error.message} \n${JSON.stringify(error)}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
-
-// TODO: 다음날 이전 운동기록 상태 변경

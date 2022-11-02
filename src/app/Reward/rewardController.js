@@ -56,7 +56,7 @@ exports.postUserRunning = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_TYPE_WRONG));
     }
     
-    const postUserRunningResult = await rewardService.createUserRunning(provider, email, longitude, latitude);
+    const postUserRunningResult = await rewardService.startUserRunning(provider, email, longitude, latitude);
     
     return res.send(postUserRunningResult);
 };
@@ -88,11 +88,11 @@ exports.postUserRunningCheck = async function (req, res) {
     
     // 일시정지 후 재시작인 경우
     if (isRestart) {
-        const postUserRunningRestartResult = await rewardService.updateUserRunningCheck(provider, email, longitude, latitude);
+        const postUserRunningRestartResult = await rewardService.restartUserRunning(provider, email, longitude, latitude);
     
         return res.send(postUserRunningRestartResult);
     } else {
-        const postUserRunningCheckResult = await rewardService.createUserRunningCheck(provider, email, longitude, latitude);
+        const postUserRunningCheckResult = await rewardService.checkUserRunning(provider, email, longitude, latitude);
     
         return res.send(postUserRunningCheckResult);
     }
@@ -117,7 +117,7 @@ exports.postUserRunningStop = async function (req, res) {
     }
     
     // 현재 위치까지 운동 기록 저장
-    const postUserRunningStopResult = await rewardService.updateUserRunningStop(provider, email, longitude, latitude);
+    const postUserRunningStopResult = await rewardService.pauseUserRunning(provider, email, longitude, latitude);
     
     return res.send(postUserRunningStopResult);
 };
@@ -148,7 +148,7 @@ exports.postUserRunningEnd = async function (req, res) {
     }
     
     // 운동 기록 저장 후 종료
-    const postUserRunningEndResult = await rewardService.updateUserRunningEnd(provider, email, forceEnd, longitude, latitude);
+    const postUserRunningEndResult = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
     
     return res.send(postUserRunningEndResult);
 };

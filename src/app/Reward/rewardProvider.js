@@ -152,10 +152,10 @@ exports.retrieveUserInfo = async (provider, email) => {
     let todayTime = 0;
     let todayCalorie = 0;
     if (userExercise.length > 0) {
-        for (let element of userExercise) {
-            todayDistance += element.distance;
-            todayTime += element.time.getTime();
-            todayCalorie += element.calorie;
+        for (let exercise of userExercise) {
+            todayDistance += exercise.distance;
+            todayTime += exercise.time.getTime();
+            todayCalorie += exercise.calorie;
         }
     }
     
