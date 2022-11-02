@@ -2,6 +2,7 @@ const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require("../../../config/response");
+const {logger} = require('../../../config/winston');
 
 // Date to String 함수
 const getTodayTime = function (todayTime) {
@@ -287,5 +288,59 @@ exports.retrieveUserExerciseGroup = async (provider, email, type) => {
         return errResponse(baseResponse.REWARD_EXERCISE_USER_GROUP_CHECK);
     } else {
         return response(baseResponse.SUCCESS);
+    }
+};
+
+// 사용자 정보 조회
+exports.retrieveUserInfo = async (provider, email) => {
+    try {
+        return await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
+    } catch (error) {
+        logger.error(`retrieveUserInfo - database error`);
+        throw error;
+    }
+};
+
+// 사용자 운동 위치 조회
+exports.retrieveUserExerciseLocation = async (userId) => {
+    try {
+        return await prisma.ExerciseLocation.findMany({
+            where: {
+                user_id: userId,
+                status: 'RUN'
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExerciseLocation - database error`);
+        throw error;
+    }
+};
+
+
+// 사용자 운동 기록 조회
+exports.retrieveUserExercise = async (userId, today, tomorrow) => {
+    try {
+        return await prisma.Exercise.findMany({
+            where: {
+                user_id: userId,
+                created_at: {
+                    gte: today,
+                    lt: tomorrow
+                },
+                status: 'RUN'
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExercise - database error`);
+        throw error;
     }
 };

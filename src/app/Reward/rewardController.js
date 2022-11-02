@@ -153,6 +153,25 @@ exports.postUserRunningEnd = async function (req, res) {
     return res.send(postUserRunningEndResult);
 };
 
+/** 운동 사진 인증 API
+ * [POST] /app/rewards/running/imageProof
+ * body : image
+ */
+exports.postRunningImage = async function (req, res) {
+    const {provider, email} = req.verifiedToken;
+    
+    // 운동 사진 불러오기
+    const imageLink = req.file.location;
+    if (imageLink === undefined || imageLink === null) {
+        return res.send(errResponse(baseResponse.RUNNING_END_IMAGE_EMPTY));
+    }
+    
+    // 운동 기록 저장 후 종료
+    const postUserRunningEndResult = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
+    
+    return res.send(postUserRunningEndResult);
+};
+
 
 
 

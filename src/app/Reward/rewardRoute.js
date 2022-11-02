@@ -1,5 +1,6 @@
 const reward = require('./rewardController');
 const {authenticate} = require("../../middleware/auth");
+const {uploadExerciseImage} = require('../../middleware/exerciseImageConnector');
 
 module.exports = (app) => {
     // 리워드 메인 API
@@ -19,6 +20,10 @@ module.exports = (app) => {
     
     // 운동 종료 API
     app.route('/rewards/running/end').post(authenticate, reward.postUserRunningEnd);
+    
+    // 운동 사진 인증 API
+    app.route('/rewards/running/imageProof')
+        .post(authenticate, uploadExerciseImage.single('image'), reward.postRunningImage);
     
     
     // 챌린지 등록 API
