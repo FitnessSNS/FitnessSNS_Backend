@@ -1,7 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require("../../../config/response");
+const {logger} = require('../../../config/winston');
 
 // Date to String 함수
 const getTodayTime = function (todayTime) {
@@ -59,46 +60,29 @@ exports.retrieveChallenge = async () => {
 };
 
 // 사용자 리워드 정보 불러오기
-exports.retrieveUserInfo = async (email) => {
-    // const userCheck = await prisma.$exist.User({ email });
-    
+exports.retrieveUserInfo = async (provider, email) => {
     // 사용자 정보 불러오기
-    const user = await prisma.User.findMany({
-        where: {
-            email: email
-        },
-        select: {
-            id: true,
-            status: true
-        }
-    });
+    const user =  await prisma.$queryRaw(
+        Prisma.sql`
+            SELECT id AS userId, provider, email,
+                   CAST(nickname AS CHAR) AS nickname,
+                   status
+            FROM User
+            WHERE provider = ${provider} AND
+                email = ${email};
+        `
+    );
     
     // 사용자 정보가 없을 경우 에러 발생
     if (user.length < 1) {
         return errResponse(baseResponse.REWARD_USER_INFO_NOT_FOUND);
     }
     
-    // 사용자 닉네임 불러오기
-    const nickname = await prisma.UserProfile.findMany({
-        where: {
-            User: {
-                email: email
-            }
-        },
-        select: {
-            nickname: true
-        }
-    });
-    
-    // 사용자 닉네임이 없을 경우 에러 발생
-    if (nickname.length < 1) {
-        return errResponse(baseResponse.REWARD_USER_NICKNAME_NOT_FOUND);
-    }
-    
     // 사용자 리워드 정보
     const userReward = await prisma.Reward.findMany({
         where: {
             User: {
+                provider: provider,
                 email: email
             }
         },
@@ -148,6 +132,7 @@ exports.retrieveUserInfo = async (email) => {
     const userExercise = await prisma.Exercise.findMany({
         where: {
             User: {
+                provider: provider,
                 email: email
             },
             created_at: {
@@ -168,10 +153,10 @@ exports.retrieveUserInfo = async (email) => {
     let todayTime = 0;
     let todayCalorie = 0;
     if (userExercise.length > 0) {
-        for (let element of userExercise) {
-            todayDistance += element.distance;
-            todayTime += element.time.getTime();
-            todayCalorie += element.calorie;
+        for (let exercise of userExercise) {
+            todayDistance += exercise.distance;
+            todayTime += exercise.time.getTime();
+            todayCalorie += exercise.calorie;
         }
     }
     
@@ -201,6 +186,7 @@ exports.retrieveUserInfo = async (email) => {
     const userChallenge = await prisma.UserChallenge.findMany({
         where: {
             User: {
+                provider: provider,
                 email: email
             },
             status: 'RUN'
@@ -262,11 +248,11 @@ exports.retrieveUserInfo = async (email) => {
         return errResponse(baseResponse.REWARD_CHALLENGE_INFO_NOT_FOUND);
     }
     
-    return {
-        userId: user[0].id,
+    const rewardMainResult = {
+        userId: user[0].userId,
         userStatus: user[0].status,
         point: totalReward,
-        nickname: nickname[0].nickname,
+        nickname: user[0].nickname,
         ment: todayMention[0].content,
         activity: {
             time_stack: timeResult,
@@ -276,14 +262,17 @@ exports.retrieveUserInfo = async (email) => {
         shopping: shoppingList,
         challenge: challengeInfo
     };
+    
+    return response(baseResponse.SUCCESS, rewardMainResult);
 };
 
 // 그룹 운동 확인
-exports.retrieveUserExerciseGroup = async (email, type) => {
+exports.retrieveUserExerciseGroup = async (provider, email, type) => {
     // 사용자 그룹 참가 확인
     const userGroup = await prisma.UserGroup.findMany({
         where: {
             User: {
+                provider: provider,
                 email: email
             },
             status: 'RUN'
@@ -299,5 +288,73 @@ exports.retrieveUserExerciseGroup = async (email, type) => {
         return errResponse(baseResponse.REWARD_EXERCISE_USER_GROUP_CHECK);
     } else {
         return response(baseResponse.SUCCESS);
+    }
+};
+
+// 사용자 정보 조회
+exports.retrieveUserInfo = async (provider, email) => {
+    try {
+        return await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id AS userId, provider, email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE provider = ${provider} AND
+                    email = ${email};
+            `
+        );
+    } catch (error) {
+        logger.error(`retrieveUserInfo - database error`);
+        throw error;
+    }
+};
+
+// 사용자 운동 위치 조회
+exports.retrieveUserExerciseLocation = async (userId) => {
+    try {
+        return await prisma.ExerciseLocation.findMany({
+            where: {
+                user_id: userId,
+                status: 'RUN'
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExerciseLocation - database error`);
+        throw error;
+    }
+};
+
+
+// 사용자 운동 기록 조회
+exports.retrieveUserExercise = async (userId, today, tomorrow) => {
+    try {
+        return await prisma.Exercise.findMany({
+            where: {
+                user_id: userId,
+                created_at: {
+                    gte: today,
+                    lt: tomorrow
+                },
+                status: 'RUN'
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExercise - database error`);
+        throw error;
+    }
+};
+
+// 사용자 운동 기록 조회 (운동 기록 ID)
+exports.retrieveUserExerciseById = async (exerciseId) => {
+    try {
+        return await prisma.Exercise.findUnique({
+            where: {
+                id: exerciseId
+            }
+        });
+    } catch (error) {
+        logger.error(`retrieveUserExerciseById - database error`);
+        throw error;
     }
 };

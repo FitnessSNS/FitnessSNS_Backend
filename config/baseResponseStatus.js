@@ -70,78 +70,74 @@ module.exports = {
     
     
     // -----------------
-    // 2. User
+    // 2. User (1250번대)
     // -----------------
 
-    // SignUp
-    PASSWORD_VALIDATION_FAIL: {isSuccess: false, code: 1510, message: "password condition does not match"},
-    NICKNAME_VALIDATION_FAIL: {isSuccess: false, code: 1511, message: "nickname condition does not match"},
-    EV_VERIFICATION_FAIL: {isSuccess: false, code: 1520, message: "email verification process failed"},
-
-    // User
-    USER_VALIDATION_FAILURE: {isSuccess: false, code: 2000, message: "사용자 인증에 실패했습니다" },
-    ACCOUNT_DETAILS_SAVED: {isSuccess: false, code: 2001, message: "account details already saved"},
     
+    
+    // -----------------
+    // 3. Reward
+    // -----------------
     // Running
-    RUNNING_START_LOCATION_EMPTY: {isSuccess: false, code: 2501, message: "Location info is empty"},
-    RUNNING_START_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2502, message: "Location type is wrong"},
+    RUNNING_CHOOSE_EXERCISE_TYPE_WRONG: {isSuccess: false, code: 1301, message: "운동 종류를 다시 확인해주세요"},
     
-    RUNNING_CHECK_RESTART_TYPE_WRONG: {isSuccess: false, code: 2511, message: "Check restart query"},
-    RUNNING_CHECK_LOCATION_EMPTY: {isSuccess: false, code: 2512, message: "Location info is empty"},
-    RUNNING_CHECK_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2513, message: "Location type is wrong"},
+    RUNNING_START_LOCATION_EMPTY: {isSuccess: false, code: 1311, message: "위치 정보가 없습니다"},
+    RUNNING_START_LOCATION_TYPE_WRONG: {isSuccess: false, code: 1312, message: "위치 정보를 다시 확인해주세요"},
     
-    RUNNING_STOP_LOCATION_EMPTY: {isSuccess: false, code: 2521, message: "Location info is empty"},
-    RUNNING_STOP_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2522, message: "Location type is wrong"},
+    RUNNING_CHECK_RESTART_TYPE_WRONG: {isSuccess: false, code: 1321, message: "운동 재시작 여부를 확인해주세요"},
+    RUNNING_CHECK_LOCATION_EMPTY: {isSuccess: false, code: 1322, message: "위치 정보가 없습니다"},
+    RUNNING_CHECK_LOCATION_TYPE_WRONG: {isSuccess: false, code: 1323, message: "위치 정보를 다시 확인해주세요"},
     
-    RUNNING_END_FORCE_END_WRONG: {isSuccess: false, code: 2531, message: "Force end is wrong"},
-    RUNNING_END_LOCATION_EMPTY: {isSuccess: false, code: 2532, message: "Location info is empty"},
-    RUNNING_END_LOCATION_TYPE_WRONG: {isSuccess: false, code: 2533, message: "Location type is wrong"},
+    RUNNING_STOP_LOCATION_EMPTY: {isSuccess: false, code: 1331, message: "위치 정보가 없습니다"},
+    RUNNING_STOP_LOCATION_TYPE_WRONG: {isSuccess: false, code: 1332, message: "위치 정보를 다시 확인해주세요"},
+    
+    RUNNING_END_FORCE_END_WRONG: {isSuccess: false, code: 1341, message: "강제 종료 여부를 다시 확인해주세요"},
+    RUNNING_END_LOCATION_EMPTY: {isSuccess: false, code: 1342, message: "위치 정보가 없습니다"},
+    RUNNING_END_LOCATION_TYPE_WRONG: {isSuccess: false, code: 1343, message: "위치 정보를 다시 확인해주세요"},
+    
+    RUNNING_PROOF_IMAGE_EMPTY: {isSuccess: false, code: 1351, message: "인증 사진을 업로드 해주세요"},
+    RUNNING_PROOF_EXERCISE_ID_EMPTY: {isSuccess: false, code: 1352, message: "사용자 운동 기록 ID를 확인해주세요"},
     
     
     // ----------------
     // 3. Reward
     // ----------------
+    // Reward
+    REWARD_USER_NOT_FOUND: {"isSuccess": false, code: 3001, message: "JWT 정보가 없습니다" },
+    
+    REWARD_USER_INFO_NOT_FOUND: {"isSuccess": false, code: 3011, message: "사용자 정보를 찾을 수 없습니다" },
+    REWARD_MENTION_NOT_FOUND: {"isSuccess": false, code: 3012, message: "오늘의 멘트를 찾을 수 없습니다" },
+    REWARD_SHOPPING_LIST_NOT_FOUND: {"isSuccess": false, code: 3013, message: "쇼핑 목록을 찾을 수 없습니다" },
+    REWARD_CHALLENGE_INFO_NOT_FOUND: {"isSuccess": false, code: 3014, message: "챌린지 목록을 찾을 수 없습니다" },
+    
+    REWARD_EXERCISE_USER_GROUP_CHECK: {"isSuccess": false, code: 3021, message: "그룹 운동을 선택할 수 없습니다" },
+    
+    RUNNING_USER_NOT_FOUND: {"isSuccess": false, code: 3031, message: "사용자 정보를 찾을 수 없습니다" },
+    RUNNING_USER_EXERCISE_LOCATION_EXIST: {"isSuccess": false, code: 3032, message: "이미 시작한 운동이 있습니다" },
+    RUNNING_USER_EXERCISE_EXIST: {"isSuccess": false, code: 3033, message: "이미 시작한 운동이 있습니다" },
+    
+    RUNNING_CHECK_USER_NOT_FOUND: {"isSuccess": false, code: 3041, message: "사용자 정보를 찾을 수 없습니다" },
+    RUNNING_CHECK_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3042, message: "운동을 시작하지 않았습니다" },
+    RUNNING_CHECK_TIME_LESS_ZERO: {"isSuccess": false, code: 3043, message: "운동 시간 간격이 없습니다" },
+    RUNNING_CHECK_TIME_OUT: {"isSuccess": false, code: 3044, message: "운동 시간 초과 (3시간 이상)" },
+    RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3045, message: "운동 기록을 찾을 수 없습니다" },
+    
+    RUNNING_STOP_USER_NOT_FOUND: {"isSuccess": false, code: 3051, message: "사용자 정보를 찾을 수 없습니다" },
+    RUNNING_STOP_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3052, message: "운동을 시작하지 않았습니다" },
+    RUNNING_STOP_TIME_LESS_ZERO: {"isSuccess": false, code: 3053, message: "운동 시간 간격이 없습니다" },
+    RUNNING_STOP_TIME_OUT: {"isSuccess": false, code: 3054, message: "운동 시간 초과 (3시간 이상)" },
+    RUNNING_STOP_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3055, message: "운동 기록을 찾을 수 없습니다" },
+    
+    RUNNING_END_USER_NOT_FOUND: {"isSuccess": false, code: 3061, message: "사용자 정보를 찾을 수 없습니다" },
+    RUNNING_END_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3062, message: "운동을 시작하지 않았습니다" },
+    RUNNING_END_TIME_LESS_ZERO: {"isSuccess": false, code: 3063, message: "운동 시간 간격이 없습니다" },
+    RUNNING_END_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3064, message: "운동 기록을 찾을 수 없습니다" },
+    
+    RUNNING_PROOF_USER_NOT_FOUND: {"isSuccess": false, code: 3071, message: "사용자 정보를 찾을 수 없습니다" },
+    RUNNING_PROOF_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3072, message: "운동 기록을 찾을 수 없습니다" },
+    RUNNING_PROOF_EXERCISE_NOT_END: {"isSuccess": false, code: 3073, message: "운동이 종료되지 않았습니다" },
+    
     CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "Challenge cannot found" },
-    
-    REWARD_USER_INFO_NOT_FOUND: {"isSuccess": false, code: 3011, message: "User info not found" },
-    REWARD_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3012, message: "User nickname not found" },
-    REWARD_MENTION_NOT_FOUND: {"isSuccess": false, code: 3013, message: "Today mention not found" },
-    REWARD_SHOPPING_LIST_NOT_FOUND: {"isSuccess": false, code: 3014, message: "Shopping list not found" },
-    REWARD_CHALLENGE_INFO_NOT_FOUND: {"isSuccess": false, code: 3015, message: "Challenge info not found" },
-    
-    REWARD_EXERCISE_USER_GROUP_CHECK: {"isSuccess": false, code: 3021, message: "This user cannot do group exercise" },
-    
-    RUNNING_USER_NOT_FOUND: {"isSuccess": false, code: 3031, message: "User info not found" },
-    RUNNING_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3032, message: "User nickname not found" },
-    RUNNING_USER_EXERCISE_LOCATION_EXIST: {"isSuccess": false, code: 3033, message: "Exercise location is already exist" },
-    
-    RUNNING_CHECK_USER_NOT_FOUND: {"isSuccess": false, code: 3041, message: "User info not found" },
-    RUNNING_CHECK_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3042, message: "User nickname not found" },
-    RUNNING_CHECK_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3043, message: "Prior location not found" },
-    RUNNING_CHECK_TIME_LESS_ZERO: {"isSuccess": false, code: 3044, message: "Exercise time is less than zero" },
-    RUNNING_CHECK_TIME_OUT: {"isSuccess": false, code: 3045, message: "Exercise time out (over 3 hours)" },
-    RUNNING_CHECK_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3046, message: "Update location error" },
-    RUNNING_CHECK_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3047, message: "Update exercise error" },
-    RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3048, message: "Exercise info not found" },
-    
-    RUNNING_STOP_USER_NOT_FOUND: {"isSuccess": false, code: 3051, message: "User info not found" },
-    RUNNING_STOP_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3052, message: "User nickname not found" },
-    RUNNING_STOP_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3053, message: "Prior location not found" },
-    RUNNING_STOP_TIME_LESS_ZERO: {"isSuccess": false, code: 3054, message: "Exercise time is less than zero" },
-    RUNNING_STOP_TIME_OUT: {"isSuccess": false, code: 3055, message: "Exercise time out (over 3 hours)" },
-    RUNNING_STOP_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3056, message: "Update location error" },
-    RUNNING_STOP_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3057, message: "Update exercise error" },
-    RUNNING_STOP_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3058, message: "Exercise info not found" },
-    
-    RUNNING_END_USER_NOT_FOUND: {"isSuccess": false, code: 3061, message: "User info not found" },
-    RUNNING_END_USER_NICKNAME_NOT_FOUND: {"isSuccess": false, code: 3062, message: "User nickname not found" },
-    RUNNING_END_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3063, message: "Prior location not found" },
-    RUNNING_END_TIME_LESS_ZERO: {"isSuccess": false, code: 3064, message: "Exercise time is less than zero" },
-    RUNNING_END_TIME_OUT: {"isSuccess": false, code: 3065, message: "Exercise time out (over 3 hours)" },
-    RUNNING_END_UPDATE_LOCATION_ERROR: {"isSuccess": false, code: 3066, message: "Update location error" },
-    RUNNING_END_UPDATE_EXERCISE_ERROR: {"isSuccess": false, code: 3067, message: "Update exercise error" },
-    RUNNING_END_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3068, message: "Exercise info not found" },
-    
     
     
     //Connection, Transaction 등의 서버 오류
