@@ -28,11 +28,12 @@ const whiteList = ["http://localhost:8080",
 const corsOptions = {
     origin: function (origin, callback) {
         if (!origin || whiteList.indexOf(origin) !== -1) {
-            callback(null, true)
+            callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'))
+            callback(new Error('Not allowed by CORS'));
         }
-    }
+    },
+    credentials: true
 };
 
 app.set('view engine', 'ejs')
