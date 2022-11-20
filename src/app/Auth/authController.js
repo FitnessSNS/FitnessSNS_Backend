@@ -83,7 +83,7 @@ const tokenGenerator = async(req, res, user) =>{
         );
         // 액세스 토큰 쿠키에 저장
         res.cookie('accessToken', accessToken, {
-            httpOnly: true,
+            // httpOnly: true,
         });
     
         // 리프레시 토큰 발급
@@ -95,7 +95,7 @@ const tokenGenerator = async(req, res, user) =>{
             }
         );
         res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
+            // httpOnly: true,
             path: '/auth/common'
         });
     
