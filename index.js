@@ -4,6 +4,7 @@ const compression = require('compression');
 const methodOverride = require('method-override');
 const cors = require('cors');
 const boolParser = require(`express-query-boolean`);
+const {morganLog} = require('./config/morganMiddleware');
 
 // 로깅 함수 전역변수 선언
 global.customLogger = require('./config/winston').logger;
@@ -41,7 +42,11 @@ const corsOptions = {
     credentials: true
 };
 
+app.set('trust proxy', '127.0.0.1');
+
 app.set('view engine', 'ejs')
+
+app.use(morganLog);
 
 app.use(compression());
 
