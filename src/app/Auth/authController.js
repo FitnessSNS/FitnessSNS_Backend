@@ -4,6 +4,14 @@ const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
 const authService = require('./authService');
 const authProvider = require('./authProvider');
+const tokenGenerator = require('../../../config/tokenGenerator');
+const redis = require('redis');
+const redisClient = new redis.createClient();
+
+// redis client 에러 발생
+redisClient.on('error', (error) => {
+    customLogger.error(`Redis Client Error\n${error.message}`);
+});
 
 // 이메일 정규표현식
 const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
@@ -64,59 +72,6 @@ const refreshTokenExtractor = async (req) => {
     }
     
     return token;
-};
-
-// JWT 생성
-const tokenGenerator = async (req, res, user) => {
-    try {
-        // 액세스 토큰 발급
-        const accessToken = jwt.sign(
-            {
-                provider: user.provider,
-                email   : user.email
-            },
-            process.env.JWT_KEY,
-            {
-                expiresIn: '3h'
-            }
-        );
-        // 액세스 토큰 쿠키에 저장
-        res.cookie('accessToken', accessToken, {
-            sameSite: 'none',
-            secure  : true,
-            path    : '/',
-            
-        });
-        
-        // 리프레시 토큰 발급
-        const refreshToken = jwt.sign(
-            {},
-            process.env.JWT_KEY,
-            {
-                expiresIn: '5d'
-            }
-        );
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            sameSite: 'none',
-            secure  : true,
-            path    : '/auth'
-        });
-        
-        // 기존 세션 정보 불러오기
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const session = await authProvider.getSessionByUserId(user.id);
-        
-        // 세션 정보가 있을 경우
-        if (session !== null) {
-            await authService.updateSession(session.refresh_token, refreshToken);
-        } else {
-            await authService.createSession(user.id, refreshToken, ip);
-        }
-    } catch (error) {
-        customLogger.error(`tokenGenerator - database error\n${error.message}`);
-        throw error;
-    }
 };
 
 /** 이메일 인증 시작 API
@@ -206,7 +161,12 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 이메일 인증정보 불러오기
-    const emailVerificationResult = await authProvider.getEmailVerification(email);
+    let emailVerificationResult;
+    try {
+        emailVerificationResult = await authProvider.getEmailVerification(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
     // 이메일 인증정보가 없을 경우
     if (emailVerificationResult.length < 1) {
@@ -226,26 +186,28 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 등록된 이메일이 있는 경우
-    const userCheckResult = await authProvider.getUserByEmail(email);
+    let userCheckResult;
+    try {
+        userCheckResult = await authProvider.getUserByEmail(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 등록된 이메일이 있을 경우
     if (userCheckResult.length > 0) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
     
-    // 회원가입 JWT 생성
-    const signUpToken = jwt.sign(
-        {
-            email: email
-        },
-        process.env.JWT_KEY,
-        {
-            expiresIn: '3h'
-        });
-    
-    // JWT 쿠키에 저장
-    res.cookie('signUpToken', signUpToken, {
-        httpOnly: true,
-        path    : '/auth/signUp',
+    // redis 서버 연결
+    await redisClient.connect();
+    // 임시 사용자 번호 생성 (6자리 문자열)
+    const userCheckString = await generateRandomString(6);
+    await redisClient.set(email, userCheckString, {
+        EX: 3600 // 회원가입 유효시간 1시간
     });
+    await redisClient.quit();
+    
+    await tokenGenerator.signUpToken(req, res, userCheckString);
     
     return res.send(response(baseResponse.SUCCESS));
 };
