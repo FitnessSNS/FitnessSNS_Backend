@@ -29,7 +29,7 @@ module.exports = {
     
     // 로컬계정 회원가입
     SIGNUP_EMAIL_NOT_MATCH: {isSuccess: false, code: 1121, message: "코드 인증한 이메일과 현재 이메일이 일치하지 않습니다"},
-    SIGNUP_EMAIL_VERIFICATION_NOT_MATCH: {isSuccess: false, code: 1122, message: "메일 인증한 내역이 없습니다"},
+    SIGNUP_EMAIL_VERIFICATION_EMPTY: {isSuccess: false, code: 1122, message: "메일 인증한 내역이 없습니다"},
     SIGNUP_PASSWORD_EMPTY: {isSuccess: false, code: 1123, message: "비밀번호를 입력해주세요"},
     SIGNUP_PASSWORD_LENGTH_OVER: {isSuccess: false, code: 1124, message: "비밀번호는 8자리 이상, 20자리 이하로 입력해주세요"},
     SIGNUP_PASSWORD_REGEX_WRONG: {isSuccess: false, code: 1125, message: "비밀번호는 최소 한 글자 이상의 영어, 숫자, 특수문자를 포함해서 입력해주세요"},
@@ -142,5 +142,5 @@ module.exports = {
     
     //Connection, Transaction 등의 서버 오류
     DB_ERROR: {"isSuccess": false, "code": 9000, "message": "데이터 베이스 에러"},
-    SERVER_ERROR: {"isSuccess": false, "code": 9001, "message": "서버 에러"},
+    MAIL_TRANSPORTER_ERROR: {"isSuccess": false, "code": 9001, "message": "회원가입 인증메일 에러"},
 }
