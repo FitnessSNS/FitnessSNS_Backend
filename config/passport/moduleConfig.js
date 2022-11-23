@@ -1,14 +1,13 @@
 const passport = require('passport');
-const { Strategy: LocalStrategy } = require('passport-local');
+const {Strategy: LocalStrategy} = require('passport-local');
 const baseResponse = require('../baseResponseStatus');
 const {response, errResponse} = require('../response');
-const {logger} = require('../winston');
 const util = require('util');
 const crypto = require('crypto');
 const pbkdf2Promisified = util.promisify(crypto.pbkdf2);
 
 // Prisma Client
-const { PrismaClient, Prisma } = require('@prisma/client');
+const {PrismaClient, Prisma} = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // 사용자 비밀번호 암호화
@@ -18,50 +17,59 @@ const hashedPassword = async (salt, password) => {
     return key.toString('base64');
 }
 
-//local strategy
+// local config
 const localConfig = {
     usernameField: 'email',
     passwordField: 'password'
 };
-const localVerification =  async (email, password, done) => {
+
+// local strategy
+const localVerification = async (email, password, done) => {
+    // 사용자 정보 불러오기
+    let userResult;
     try {
-        // 사용자 정보 불러오기
-        const userResult = await prisma.$queryRaw(
+        userResult = await prisma.$queryRaw(
             Prisma.sql`
-                SELECT id AS userId, provider, email, password, salt,
-                       CAST(nickname AS CHAR) AS nickname, status
+                SELECT id                     AS userId,
+                       provider,
+                       email,
+                       password,
+                       salt,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
                 FROM User
-                WHERE provider = 'local' AND
-                      email = ${email};
+                WHERE provider = 'local'
+                  AND email = ${email};
             `
         );
-        const user = userResult[0];
-        
-        // 사용자 정보가 없을 경우
-        if (user === null){
-            return done(null, false, errResponse(baseResponse.SIGNIN_LOCAL_USER_NOT_FOUND));
-        }
-        
-        // 사용자 계정 상태가 RUN이 아닐 경우
-        if (user.status !== 'RUN'){
-            return done(null, false, errResponse(baseResponse.SIGNIN_LOCAL_USER_STATUS));
-        }
-        
-        // 비밀번호가 다를 경우
-        const userPassword = await hashedPassword(user.salt, password);
-        if(user.password !== userPassword) {
-            return done(null, false, errResponse(baseResponse.SIGNIN_LOCAL_USER_PASSWORD_WRONG));
-        }
-        
-        done(null, user, {});
     } catch (error) {
-        logger.error(`localVerification - passport module error\n${JSON.stringify(error)}`);
-        done(error);
+        customLogger.error(`localVerification - database error\n${error.message}`);
+        error.type = 'db';
+        return done(error);
     }
+    const user = userResult[0];
+    
+    // 사용자 정보가 없을 경우
+    if (user === undefined || user === null) {
+        return done(errResponse(baseResponse.SIGNIN_LOCAL_USER_NOT_FOUND));
+    }
+    
+    // 사용자 계정 상태가 RUN이 아닐 경우
+    if (user.status !== 'RUN') {
+        return done(errResponse(baseResponse.SIGNIN_LOCAL_USER_STATUS));
+    }
+    
+    // 비밀번호가 다를 경우
+    const userPassword = await hashedPassword(user.salt, password);
+    if (user.password !== userPassword) {
+        return done(errResponse(baseResponse.SIGNIN_LOCAL_USER_PASSWORD_WRONG));
+    }
+    
+    done(null, user);
 }
 
 module.exports = {
-    localInitialize : () => {
+    localInitialize: () => {
         passport.use('local', new LocalStrategy(localConfig, localVerification));
     },
 }
