@@ -235,9 +235,13 @@ exports.nicknameCheck = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 응답 객체 생성
@@ -253,19 +257,29 @@ exports.nicknameCheck = async (req, res) => {
  * body : email, nickname, password
  */
 exports.signUp = async (req, res) => {
-    const userEmail = req.verifiedToken.email;
+    const userCheck = req.verifiedToken.userCheck;
     const {email, nickname, password} = req.body;
     const nicknameByteLength = await getByteLength(nickname);
     
-    // 이메일 일치 확인
-    if (userEmail !== email) {
+    // 임시 사용자 번호 확인
+    
+    // redis 서버 연결
+    await redisClient.connect();
+    const redisCheck = await redisClient.get(email);
+    await redisClient.quit();
+    
+    if (userCheck !== redisCheck) {
         return res.send(errResponse(baseResponse.SIGNUP_EMAIL_NOT_MATCH));
     }
     
     // 이메일 인증정보 확인
-    const emailVeirificationResult = await authProvider.getEmailVerification(email);
-    if (emailVeirificationResult.length < 1) {
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_VERIFICATION_NOT_MATCH));
+    try {
+        const emailVeirificationResult = await authProvider.getEmailVerification(email);
+        if (emailVeirificationResult.length < 1) {
+            return res.send(errResponse(baseResponse.SIGNUP_EMAIL_VERIFICATION_EMPTY));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 닉네임 확인
@@ -284,9 +298,13 @@ exports.signUp = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult !== undefined && nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult !== undefined && nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 비밀번호 확인
@@ -347,6 +365,19 @@ exports.localSignIn = async (req, res) => {
         
         // JWT 발급
         await tokenGenerator(req, res, user);
+        
+        
+        // 액세스 토큰 발급
+        const accessToken = jwt.sign(
+            {
+                provider: user.provider,
+                email   : user.email
+            },
+            process.env.JWT_KEY,
+            {
+                expiresIn: '3h'
+            }
+        );
         
         const signInResult = {
             userId  : user.userId,

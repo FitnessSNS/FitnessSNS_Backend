@@ -101,15 +101,15 @@ exports.createEmailVerification = async (email, code) => {
 
 // 로컬계정 생성
 exports.createLocalUser = async (email, nickname, password) => {
+    // salt 생성
+    const createSalt = await randomBytesPromisified(64);
+    const salt = createSalt.toString('base64');
+    
+    // 해시 비밀번호 생성
+    const createHashedPassword = await pbkdf2Promisified(password, salt, 17450, 64, 'sha512');
+    const hashedPassword = createHashedPassword.toString('base64');
+    
     try {
-        // salt 생성
-        const createSalt = await randomBytesPromisified(64);
-        const salt = createSalt.toString('base64');
-        
-        // 해시 비밀번호 생성
-        const createHashedPassword = await pbkdf2Promisified(password, salt, 17450, 64, 'sha512');
-        const hashedPassword = createHashedPassword.toString('base64');
-        
         // 로컬계정 생성
         const nicknameBuffer = Buffer.from(nickname);
         const createUserInfo = prisma.User.create({
@@ -129,13 +129,17 @@ exports.createLocalUser = async (email, nickname, password) => {
         
         // 트랜잭션 처리
         await prisma.$transaction([createUserInfo, deleteEmailVerification]);
-        
-        // 계정정보 불러오기
+    } catch (error) {
+        customLogger.error(`createLocalUser - transaction error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 로컬계정 정보 불러오기
+    try {
         const userInfoResult = await authProvider.getUserInfoByEmail('local', email);
         
         return response(baseResponse.SUCCESS, userInfoResult[0]);
-    } catch (error) {
-        customLogger.error(`createUser - database error\n${error.message}`);
+    } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
 };
