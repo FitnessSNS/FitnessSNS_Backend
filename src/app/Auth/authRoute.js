@@ -25,7 +25,7 @@ module.exports = (app) => {
     app.post('/auth/oauth/addInfo', authenticate, authController.addInfo);
     
 
-    // JWT 재발급
+    // TODO: JWT 재발급
     app.get('/auth/common/refresh', authController.getRefreshToken);
 
     // 로그아웃

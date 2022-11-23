@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const baseResponse = require('../../config/baseResponseStatus');
 const {response, errResponse} = require('../../config/response');
-const {logger} = require('../../config/winston');
 
 // Prisma Client
 const { PrismaClient } = require('@prisma/client');
@@ -23,7 +22,7 @@ const signUpAuth = async (req, res, next) => {
     // 토큰 복호화
     await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
         if (error) {
-            logger.error(`signUpToken - signUpAuth middleware error\n${error.message}`);
+            customLogger.error(`signUpToken - signUpAuth middleware error\n${error.message}`);
             return res.send(errResponse(baseResponse.SIGNUP_TOKEN_VERIFICATION_FAIL));
         }
         
@@ -52,7 +51,7 @@ const authenticate = async (req, res, next) => {
     // 토큰 복호화
     await jwt.verify(token, process.env.JWT_KEY, async (error, verifiedToken) => {
         if (error) {
-            logger.error(`signInToken - authenticate middleware error\n${error.message}`);
+            customLogger.error(`signInToken - authenticate middleware error\n${error.message}`);
             return res.send(errResponse(baseResponse.SIGNIN_TOKEN_VERIFICATION_FAIL));
         }
     

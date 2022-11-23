@@ -1,9 +1,6 @@
 # Jetbrain 설정 파일
 .idea
 
-# VSCode 설정파일
-# 입력
-
 # 로그
 log
 logs
@@ -12,7 +9,8 @@ logs
 /node_modules/
 
 # environment keys
-.env
+.env.development
+.env.production
 
 #sqlite3 test database
 sqlite

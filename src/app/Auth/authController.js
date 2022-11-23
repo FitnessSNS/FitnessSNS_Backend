@@ -4,7 +4,14 @@ const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
 const authService = require('./authService');
 const authProvider = require('./authProvider');
-const {logger} = require('../../../config/winston');
+const tokenGenerator = require('../../../config/tokenGenerator');
+const redis = require('redis');
+const redisClient = new redis.createClient();
+
+// redis client 에러 발생
+redisClient.on('error', (error) => {
+    customLogger.error(`Redis Client Error\n${error.message}`);
+});
 
 // 이메일 정규표현식
 const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
@@ -31,7 +38,7 @@ const getByteLength = async (str) => {
         } else {
             byte += 1;
         }
-    
+        
         count--;
     }
     
@@ -45,7 +52,7 @@ const getByteLength = async (str) => {
 
 // 랜덤 문자열 생성
 const generateRandomString = async (num) => {
-    const characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     const charactersLength = characters.length;
     
@@ -65,55 +72,6 @@ const refreshTokenExtractor = async (req) => {
     }
     
     return token;
-};
-
-// JWT 생성
-const tokenGenerator = async(req, res, user) =>{
-    try {
-        // 액세스 토큰 발급
-        const accessToken = jwt.sign(
-            {
-                provider: user.provider,
-                email: user.email
-            },
-            process.env.JWT_KEY,
-            {
-                expiresIn: '3h'
-            }
-        );
-        // 액세스 토큰 쿠키에 저장
-        res.cookie('accessToken', accessToken, {
-            // httpOnly: true,
-        });
-    
-        // 리프레시 토큰 발급
-        const refreshToken = jwt.sign(
-            {},
-            process.env.JWT_KEY,
-            {
-                expiresIn: '5d'
-            }
-        );
-        res.cookie('refreshToken', refreshToken, {
-            // httpOnly: true,
-            path: '/auth/common'
-        });
-    
-        // 기존 세션 정보 불러오기
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const session = await authProvider.getSessionByUserId(user.id);
-        
-        // 세션 정보가 있을 경우
-        if (session !== null) {
-            await authService.updateSession(session.refresh_token, refreshToken);
-        } else {
-            await authService.createSession(user.id, refreshToken, ip);
-        }
-    }
-    catch (error) {
-        logger.error(`tokenGenerator - database error\n${error.message}`);
-        throw error;
-    }
 };
 
 /** 이메일 인증 시작 API
@@ -137,7 +95,14 @@ exports.emailVerifyStart = async (req, res) => {
     }
     
     // 이메일 중복검사
-    const getUserByEmailResult = await authProvider.getUserByEmail(email);
+    let getUserByEmailResult;
+    try {
+        getUserByEmailResult = await authProvider.getUserByEmail(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 중복 이메일이 있을 경우
     if (getUserByEmailResult.length > 0) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
@@ -146,9 +111,14 @@ exports.emailVerifyStart = async (req, res) => {
     const verificationCode = await generateRandomString(12);
     
     // 이메일 인증정보 불러오기
-    const emailVerificationResult = await authProvider.getEmailVerification(email);
+    let emailVerificationResult;
+    try {
+        emailVerificationResult = await authProvider.getEmailVerification(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
-    // 기존에 생성한 이메일 인증정보가 없을 경우
+    // 기존에 생성한 이메일 인증정보 확인
     let emailVerificationResponse = null;
     if (emailVerificationResult.length < 1) {
         emailVerificationResponse = await authService.createEmailVerification(email, verificationCode);
@@ -191,7 +161,12 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 이메일 인증정보 불러오기
-    const emailVerificationResult = await authProvider.getEmailVerification(email);
+    let emailVerificationResult;
+    try {
+        emailVerificationResult = await authProvider.getEmailVerification(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
     // 이메일 인증정보가 없을 경우
     if (emailVerificationResult.length < 1) {
@@ -211,26 +186,28 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 등록된 이메일이 있는 경우
-    const userCheckResult = await authProvider.getUserByEmail(email);
+    let userCheckResult;
+    try {
+        userCheckResult = await authProvider.getUserByEmail(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 등록된 이메일이 있을 경우
     if (userCheckResult.length > 0) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
     
-    // 회원가입 JWT 생성
-    const signUpToken = jwt.sign(
-        {
-            email: email
-        },
-        process.env.JWT_KEY,
-        {
-            expiresIn: '3h'
-        });
-    
-    // JWT 쿠키에 저장
-    res.cookie('signUpToken', signUpToken, {
-        httpOnly: true,
-        path: '/auth/signUp',
+    // redis 서버 연결
+    await redisClient.connect();
+    // 임시 사용자 번호 생성 (6자리 문자열)
+    const userCheckString = await generateRandomString(6);
+    await redisClient.set(email, userCheckString, {
+        EX: 3600 // 회원가입 유효시간 1시간
     });
+    await redisClient.quit();
+    
+    await tokenGenerator.signUpToken(req, res, userCheckString);
     
     return res.send(response(baseResponse.SUCCESS));
 };
@@ -258,9 +235,13 @@ exports.nicknameCheck = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 응답 객체 생성
@@ -276,25 +257,36 @@ exports.nicknameCheck = async (req, res) => {
  * body : email, nickname, password
  */
 exports.signUp = async (req, res) => {
-    const userEmail = req.verifiedToken.email;
+    const userCheck = req.verifiedToken.userCheck;
     const {email, nickname, password} = req.body;
-    const nicknameByteLength = await getByteLength(nickname);
     
-    // 이메일 일치 확인
-    if (userEmail !== email) {
+    // redis 서버 연결
+    await redisClient.connect();
+    const redisCheck = await redisClient.get(email);
+    await redisClient.quit();
+    
+    // 임시 사용자 번호 확인
+    if (userCheck !== redisCheck) {
         return res.send(errResponse(baseResponse.SIGNUP_EMAIL_NOT_MATCH));
     }
     
     // 이메일 인증정보 확인
-    const emailVeirificationResult = await authProvider.getEmailVerification(email);
-    if (emailVeirificationResult.length < 1) {
-        return res.send(errResponse(baseResponse.SIGNUP_EMAIL_VERIFICATION_NOT_MATCH));
+    try {
+        const emailVeirificationResult = await authProvider.getEmailVerification(email);
+        if (emailVeirificationResult.length < 1) {
+            return res.send(errResponse(baseResponse.SIGNUP_EMAIL_VERIFICATION_EMPTY));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
-   
+    
     // 닉네임 확인
     if (nickname === undefined || nickname === null || nickname === '') {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
     }
+    
+    // 닉네임 길이 계산
+    const nicknameByteLength = await getByteLength(nickname);
     
     // 닉네임 길이 검사
     if (nicknameByteLength < 0 || nicknameByteLength.length > 12) {
@@ -307,9 +299,13 @@ exports.signUp = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult !== undefined && nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult !== undefined && nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 비밀번호 확인
@@ -321,7 +317,7 @@ exports.signUp = async (req, res) => {
     if (password.length < 8 || password.length > 20) {
         return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_LENGTH_OVER));
     }
-   
+    
     // 비밀번호 유효성 검사
     if (!regPassword.test(password)) {
         return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_REGEX_WRONG));
@@ -358,27 +354,40 @@ exports.authURI = async (req, res) => {
  * body : provider, email, password
  */
 exports.localSignIn = async (req, res) => {
-    passport.authenticate('local', async (error, user, passportResponse) => {
+    passport.authenticate('local', async (error, user) => {
         if (error) {
-            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
+            if (error.type === 'db') {
+                return res.send(errResponse(baseResponse.DB_ERROR));
+            } else {
+                return res.send(error);
+            }
         }
         
-        // 사용자 정보가 없을 경우
-        if (!user) {
-            return res.send(passportResponse);
-        }
-        
-        // JWT 발급
-        await tokenGenerator(req, res, user);
+        // TODO: 유효시간 변경
+        // 액세스 토큰 발급
+        const accessToken = jwt.sign(
+            {
+                provider: user.provider,
+                email   : user.email
+            },
+            process.env.JWT_KEY,
+            {
+                expiresIn: '1d'
+            }
+        );
+    
+        // 리프레시 토큰 발급 (쿠키)
+        await tokenGenerator.refreshToken(req, res, user);
         
         const signInResult = {
-            userId: user.userId,
-            provider: user.provider,
-            email: user.email,
-            nickname: user.nickname,
-            status: user.status
+            userId     : user.userId,
+            provider   : user.provider,
+            email      : user.email,
+            nickname   : user.nickname,
+            status     : user.status,
+            accessToken: accessToken
         };
-    
+        
         return res.send(response(baseResponse.SUCCESS, signInResult));
     })(req, res);
 };
@@ -392,7 +401,12 @@ exports.kakaoSignIn = async (req, res) => {
     const code = req.query.code;
     
     // 인가코드로 액세스 토큰 요청
-    const getKakaoTokenResult = await authProvider.getKakaoToken(code);
+    let getKakaoTokenResult;
+    try {
+        getKakaoTokenResult = await authProvider.getKakaoToken(code);
+    } catch (error) {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
     // 액세스 토큰을 받을 수 없는 경우
     if (getKakaoTokenResult === 'apiError' || getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
@@ -421,7 +435,7 @@ exports.kakaoSignIn = async (req, res) => {
         if (getUserInfo.length < 1) {
             return res.send(errResponse(baseResponse.SIGNIN_KAKAO_USER_NOT_CREATED));
         }
-    // 가입한 계정이 있을 경우
+        // 가입한 계정이 있을 경우
     } else {
         // 계정 상태 확인
         if (getUserInfo[0].status !== 'RUN') {
@@ -470,12 +484,11 @@ exports.addInfo = async (req, res) => {
     if (nicknameResult !== undefined && nicknameResult.length > 0) {
         return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
     }
-   
+    
     const addUserInfoResponse = await authService.addUserInfo(provider, email, nickname);
     
     res.send(addUserInfoResponse);
 };
-
 
 
 /** JWT 재발급 API
@@ -511,7 +524,7 @@ exports.getRefreshToken = async (req, res) => {
             const accessToken = jwt.sign(
                 {
                     provider: session.User.provider,
-                    email: session.User.email
+                    email   : session.User.email
                 },
                 process.env.JWT_KEY,
                 {
@@ -532,7 +545,7 @@ exports.getRefreshToken = async (req, res) => {
             );
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                path: '/auth/common'
+                path    : '/auth/common'
             });
             
             // 세션 정보 수정
@@ -543,13 +556,11 @@ exports.getRefreshToken = async (req, res) => {
         else {
             return res.send(errResponse(baseResponse.REFRESH_TOKEN_IP_NOT_MATCH));
         }
-    // 세션 정보가 없을 경우
+        // 세션 정보가 없을 경우
     } else {
         return res.send(errResponse(baseResponse.REFRESH_TOKEN_SESSION_DELETED));
     }
 };
-
-
 
 
 exports.logout = async (req, res, next) => {
@@ -560,25 +571,25 @@ exports.logout = async (req, res, next) => {
         }
         res.clearCookie('access_token');
         res.clearCookie('refresh_token');
-
+        
         res.send(response(baseResponse.SUCCESS));
     } catch (e) {
         console.error(e);
-        next({ status: 500, message: 'internal server error' });
+        next({status: 500, message: 'internal server error'});
     }
-
+    
 }
 
 exports.signout = async (req, res, next) => {
     try {
         let token = accessTokenExtractor(req);
-        if(token === null || token === undefined){
+        if (token === null || token === undefined) {
             res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
             return;
         }
         let decoded;
         try {
-            decoded = jwt.verify(token, process.env.JWT_KEY); 
+            decoded = jwt.verify(token, process.env.JWT_KEY);
         } catch (e) {
             if (e.name == "JsonWebTokenError") {
                 res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
@@ -588,24 +599,24 @@ exports.signout = async (req, res, next) => {
                 res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
                 return;
             }
-            next({ status: 500, message: 'internal server error' });
+            next({status: 500, message: 'internal server error'});
             return;
         }
         
         await userService.chageStatus({status: "DELETED", provider: decoded.provider, email: decoded.email});
-
+        
         let refresh_token = await refreshTokenExtractor(req);
         if (refresh_token) {
             await authService.deleteSession(token);
         }
         res.clearCookie('access_token');
         res.clearCookie('refresh_token');
-
+        
         res.send(response(baseResponse.SUCCESS));
-
+        
     } catch (e) {
         console.error(e);
         next({status: 500, message: 'internal server error'});
-    } 
+    }
 }
 
