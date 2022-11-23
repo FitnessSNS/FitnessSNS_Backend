@@ -5,7 +5,7 @@ const format = `:remote-addr - :remote-user | ":method :url HTTP/:http-version" 
 
 // 로깅을 위한 Output Stream 옵션
 const stream = {
-    write: (message) => logger.http(message)
+    write: (message) => customLogger.http(message)
 };
 
 // 로깅 스킵 여부 (400미만 코드면 로깅 안함)
