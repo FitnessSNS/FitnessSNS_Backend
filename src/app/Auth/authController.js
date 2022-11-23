@@ -259,15 +259,13 @@ exports.nicknameCheck = async (req, res) => {
 exports.signUp = async (req, res) => {
     const userCheck = req.verifiedToken.userCheck;
     const {email, nickname, password} = req.body;
-    const nicknameByteLength = await getByteLength(nickname);
-    
-    // 임시 사용자 번호 확인
     
     // redis 서버 연결
     await redisClient.connect();
     const redisCheck = await redisClient.get(email);
     await redisClient.quit();
     
+    // 임시 사용자 번호 확인
     if (userCheck !== redisCheck) {
         return res.send(errResponse(baseResponse.SIGNUP_EMAIL_NOT_MATCH));
     }
@@ -286,6 +284,9 @@ exports.signUp = async (req, res) => {
     if (nickname === undefined || nickname === null || nickname === '') {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
     }
+    
+    // 닉네임 길이 계산
+    const nicknameByteLength = await getByteLength(nickname);
     
     // 닉네임 길이 검사
     if (nicknameByteLength < 0 || nicknameByteLength.length > 12) {
@@ -353,20 +354,16 @@ exports.authURI = async (req, res) => {
  * body : provider, email, password
  */
 exports.localSignIn = async (req, res) => {
-    passport.authenticate('local', async (error, user, passportResponse) => {
+    passport.authenticate('local', async (error, user) => {
         if (error) {
-            return res.send(errResponse(baseResponse.SIGNIN_LOCAL_PASSPORT));
+            if (error.type === 'db') {
+                return res.send(errResponse(baseResponse.DB_ERROR));
+            } else {
+                return res.send(error);
+            }
         }
         
-        // 사용자 정보가 없을 경우
-        if (!user) {
-            return res.send(passportResponse);
-        }
-        
-        // JWT 발급
-        await tokenGenerator(req, res, user);
-        
-        
+        // TODO: 유효시간 변경
         // 액세스 토큰 발급
         const accessToken = jwt.sign(
             {
@@ -375,16 +372,20 @@ exports.localSignIn = async (req, res) => {
             },
             process.env.JWT_KEY,
             {
-                expiresIn: '3h'
+                expiresIn: '1d'
             }
         );
+    
+        // 리프레시 토큰 발급 (쿠키)
+        await tokenGenerator.refreshToken(req, res, user);
         
         const signInResult = {
-            userId  : user.userId,
-            provider: user.provider,
-            email   : user.email,
-            nickname: user.nickname,
-            status  : user.status
+            userId     : user.userId,
+            provider   : user.provider,
+            email      : user.email,
+            nickname   : user.nickname,
+            status     : user.status,
+            accessToken: accessToken
         };
         
         return res.send(response(baseResponse.SUCCESS, signInResult));
