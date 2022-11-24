@@ -10,6 +10,7 @@ module.exports = {
     SIGNUP_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1052, message: "회원가입 토큰 에러"},
     SIGNIN_TOKEN_EMPTY: {isSuccess: false, code: 1053, message: "로그인 토큰이 없습니다"},
     SIGNIN_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1054, message: "로그인 토큰 에러"},
+    SIGNIN_REFRESH_TOKEN_GENERATE_FAIL: {isSuccess: false, code: 1055, message: "리프레시 토큰 생성 에러"},
     
     // 이메일 인증
     EMAIL_VERIFICATION_EMAIL_EMPTY: {isSuccess: false, code: 1101, message: "이메일을 입력해주세요"},
@@ -143,4 +144,5 @@ module.exports = {
     //Connection, Transaction 등의 서버 오류
     DB_ERROR: {"isSuccess": false, "code": 9000, "message": "데이터 베이스 에러"},
     MAIL_TRANSPORTER_ERROR: {"isSuccess": false, "code": 9001, "message": "회원가입 인증메일 에러"},
+    KAKAO_API_ERROR: {"isSuccess": false, "code": 9002, "message": "카카오 API 에러"},
 }
