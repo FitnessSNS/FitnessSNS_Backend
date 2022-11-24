@@ -367,18 +367,22 @@ exports.localSignIn = async (req, res) => {
         // 액세스 토큰 발급
         const accessToken = jwt.sign(
             {
-                provider: user.provider,
-                email   : user.email
+                id: user.userId
             },
             process.env.JWT_KEY,
             {
                 expiresIn: '1d'
             }
         );
-    
-        // 리프레시 토큰 발급 (쿠키)
-        await tokenGenerator.refreshToken(req, res, user);
         
+        // 리프레시 토큰 발급 (쿠키)
+        try {
+            await tokenGenerator.refreshToken(req, res, user);
+        } catch {
+            return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+        }
+        
+        // 응답 객체 생성
         const signInResult = {
             userId     : user.userId,
             provider   : user.provider,
@@ -405,31 +409,45 @@ exports.kakaoSignIn = async (req, res) => {
     try {
         getKakaoTokenResult = await authProvider.getKakaoToken(code);
     } catch (error) {
-        return res.send(errResponse(baseResponse.DB_ERROR));
+        return res.send(errResponse(baseResponse.KAKAO_API_ERROR));
     }
     
     // 액세스 토큰을 받을 수 없는 경우
-    if (getKakaoTokenResult === 'apiError' || getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
+    if (getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG));
     }
     
     // 액세스 토큰으로 사용자 정보 요청
     const accessToken = getKakaoTokenResult.data.access_token;
-    const getKakaoUserInfoResult = await authProvider.getKakaoUserInfo(accessToken);
+    let getKakaoUserInfoResult;
+    try {
+        getKakaoUserInfoResult = await authProvider.getKakaoUserInfo(accessToken);
+    } catch {
+        return res.send(errResponse(baseResponse.KAKAO_API_ERROR));
+    }
     
     // 사용자 정보를 받을 수 없는 경우
-    if (getKakaoUserInfoResult === 'apiError' || getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
+    if (getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_ACCESS_TOKEN_WRONG));
     }
     
     // 기존에 가입한 계정 확인
     const email = getKakaoUserInfoResult.data.kakao_account.email;
-    let getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    let getUserInfo;
+    try {
+        getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
     // 기존에 가입한 계정이 없을 경우
     if (getUserInfo.length < 1) {
         // 신규 가입
-        getUserInfo = await authService.createOAuthUser('kakao', email);
+        try {
+            getUserInfo = await authService.createOAuthUser('kakao', email);
+        } catch {
+            return res.send(errResponse(baseResponse.DB_ERROR));
+        }
         
         // 신규 가입이 안 될 경우
         if (getUserInfo.length < 1) {
@@ -443,8 +461,24 @@ exports.kakaoSignIn = async (req, res) => {
         }
     }
     
-    // JWT 생성
-    await tokenGenerator(req, res, getUserInfo[0]);
+    // TODO: 유효시간 변경
+    // 액세스 토큰 발급
+    getUserInfo[0].accessToken = jwt.sign(
+        {
+            id: getUserInfo[0].userId
+        },
+        process.env.JWT_KEY,
+        {
+            expiresIn: '1d'
+        }
+    );
+    
+    // 리프레시 토큰 발급 (쿠키)
+    try {
+        await tokenGenerator.refreshToken(req, res, getUserInfo[0]);
+    } catch {
+        return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+    }
     
     return res.send(response(baseResponse.SUCCESS, getUserInfo[0]));
 };

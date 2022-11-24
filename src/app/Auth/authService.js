@@ -162,12 +162,16 @@ exports.createOAuthUser = async (provider, email) => {
         
         // 트랜잭션 처리
         await prisma.$transaction([createUserInfo, deleteEmailVerification]);
-        
-        // 계정정보 불러오기
-        return await authProvider.getUserInfoByEmail(provider, email);
     } catch (error) {
         customLogger.error(`createUser - database error\n${error.message}`);
-        return errResponse(baseResponse.DB_ERROR);
+        throw error;
+    }
+    
+    // 계정정보 불러오기
+    try {
+        return await authProvider.getUserInfoByEmail(provider, email);
+    } catch (error) {
+        throw error;
     }
 };
 
