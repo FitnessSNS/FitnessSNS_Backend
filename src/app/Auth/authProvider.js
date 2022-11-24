@@ -30,16 +30,18 @@ exports.getUserByEmail = async (email) => {
 // 세션 확인 (토큰)
 exports.getSessionByToken = async (refresh_token) => {
     try {
-        return await prisma.Session.findFirst({
+        return await prisma.Session.findMany({
             where  : {refresh_token: refresh_token},
             include: {
                 User: {
                     select: {
+                        id      : true,
                         provider: true,
                         email   : true
                     }
                 }
-            }
+            },
+            take   : 1
         });
     } catch (error) {
         customLogger.error(`getSessionByToken - database error\n${error.message}`);
@@ -51,7 +53,7 @@ exports.getSessionByToken = async (refresh_token) => {
 // 세션 확인 (사용자 ID)
 exports.getSessionByUserId = async (user_id) => {
     try {
-        return await prisma.Session.findFirst({
+        return await prisma.Session.findMany({
             where: {user_id: user_id}
         });
     } catch (error) {

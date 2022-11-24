@@ -67,8 +67,8 @@ const generateRandomString = async (num) => {
 const refreshTokenExtractor = async (req) => {
     let token = null;
     
-    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
-        token = req.cookies['refresh_token'];
+    if (req && req.cookies && (req.cookies['refreshToken'] !== '')) {
+        token = req.cookies['refreshToken'];
     }
     
     return token;
@@ -533,9 +533,8 @@ exports.addInfo = async (req, res) => {
     res.send(addUserInfoResponse);
 };
 
-
-/** JWT 재발급 API
- * [GET] /auth/common/refresh
+/** accessToken 재발급 API
+ * [GET] /auth/refresh
  */
 exports.getRefreshToken = async (req, res) => {
     // 토큰 검사
@@ -558,42 +557,45 @@ exports.getRefreshToken = async (req, res) => {
     });
     
     // 세션 정보 불러오기
-    const session = await authProvider.getSessionByToken(token);
-    if (session !== null) {
+    let session;
+    try {
+        session = await authProvider.getSessionByToken(token);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    if (session !== undefined && session !== null && session.length > 0) {
         // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        if (session.ip === ip) {
-            // IP가 일치하면 JWT 재발급
+        
+        // IP가 일치하면 JWT 재발급
+        if (session[0].ip === ip) {
+            // TODO: 유효시간 변경
+            // 액세스 토큰 발급
             const accessToken = jwt.sign(
                 {
-                    provider: session.User.provider,
-                    email   : session.User.email
+                    id: session.userId
                 },
                 process.env.JWT_KEY,
                 {
-                    expiresIn: '3h'
+                    expiresIn: '1d'
                 }
             );
-            res.cookie('accessToken', accessToken, {
-                httpOnly: true,
-            });
             
-            // 리프레시 토큰 재발급
-            const refreshToken = jwt.sign(
-                {},
-                process.env.JWT_KEY,
-                {
-                    expiresIn: '5d'
-                }
-            );
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                path    : '/auth/common'
-            });
+            const user = {
+                userId  : session[0].User.id,
+                provider: session[0].User.provider,
+                email   : session[0].User.email
+            }
             
-            // 세션 정보 수정
-            await authService.updateSession(session.refresh_token, refreshToken);
-            return res.send(response(baseResponse.SUCCESS));
+            // 리프레시 토큰 발급 (쿠키)
+            try {
+                await tokenGenerator.refreshToken(req, res, user);
+            } catch {
+                return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+            }
+            
+            return res.send(response(baseResponse.SUCCESS, accessToken));
         }
         // IP가 일치하지 않을 경우
         else {

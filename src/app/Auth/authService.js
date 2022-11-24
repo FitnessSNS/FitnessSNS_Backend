@@ -178,14 +178,15 @@ exports.createOAuthUser = async (provider, email) => {
 
 // UPDATE
 // 세션 정보 수정
-exports.updateSession = async (prev_token, new_token) => {
+exports.updateSession = async (userId, refreshToken, ip) => {
     try {
         await prisma.Session.updateMany({
             where: {
-                refresh_token: prev_token
+                user_id: userId
             },
             data : {
-                refresh_token: new_token
+                refresh_token: refreshToken,
+                ip           : ip
             }
         });
     } catch (error) {
@@ -292,7 +293,6 @@ exports.deleteSession = async (refresh_token) => {
         });
     } catch (error) {
         customLogger.error(`deleteSession - database error\n${error.message}`);
-        throw error;
     }
 };
 

@@ -25,9 +25,9 @@ module.exports = (app) => {
     app.post('/auth/oauth/addInfo', authenticate, authController.addInfo);
     
     // accessToken 재발급
-    app.get('/auth/common/refresh', authController.getRefreshToken);
+    app.get('/auth/refresh', authController.getRefreshToken);
 
-    // 로그아웃
+    // TODO: 로그아웃
     app.post('/auth/common/logout', authController.logout);
 
     // 회원탈퇴
