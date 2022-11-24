@@ -162,26 +162,31 @@ exports.createOAuthUser = async (provider, email) => {
         
         // 트랜잭션 처리
         await prisma.$transaction([createUserInfo, deleteEmailVerification]);
-        
-        // 계정정보 불러오기
-        return await authProvider.getUserInfoByEmail(provider, email);
     } catch (error) {
         customLogger.error(`createUser - database error\n${error.message}`);
-        return errResponse(baseResponse.DB_ERROR);
+        throw error;
+    }
+    
+    // 계정정보 불러오기
+    try {
+        return await authProvider.getUserInfoByEmail(provider, email);
+    } catch (error) {
+        throw error;
     }
 };
 
 
 // UPDATE
 // 세션 정보 수정
-exports.updateSession = async (prev_token, new_token) => {
+exports.updateSession = async (userId, refreshToken, ip) => {
     try {
         await prisma.Session.updateMany({
             where: {
-                refresh_token: prev_token
+                user_id: userId
             },
             data : {
-                refresh_token: new_token
+                refresh_token: refreshToken,
+                ip           : ip
             }
         });
     } catch (error) {
@@ -264,13 +269,17 @@ exports.addUserInfo = async (provider, email, nickname) => {
                 nickname: nicknameBuffer
             }
         });
-        
-        // 계정정보 불러오기
+    } catch (error) {
+        customLogger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 계정정보 불러오기
+    try {
         const userInfoResult = await authProvider.getUserInfoByEmail(provider, email);
         
         return response(baseResponse.SUCCESS, userInfoResult[0]);
-    } catch (error) {
-        customLogger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+    } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
 };
@@ -284,7 +293,6 @@ exports.deleteSession = async (refresh_token) => {
         });
     } catch (error) {
         customLogger.error(`deleteSession - database error\n${error.message}`);
-        throw error;
     }
 };
 

@@ -34,14 +34,7 @@ const signUpAuth = async (req, res, next) => {
 
 // 로그인 토큰 확인
 const authenticate = async (req, res, next) => {
-    let token = null;
-    
-    token = req.headers['x-access-token'] || req.query.token || req.cookies['accessToken'];
-    /*if (req.cookies !== null && (req.cookies['accessToken'] !== '')) {
-        token = req.cookies['accessToken'];
-    } else {
-        token = req.headers['x-access-token'] || req.query.token;
-    }*/
+    const token =  req.headers['x-access-token'] || req.query.token;
     
     // 토큰이 없으면 종료
     if (token === null || token === undefined){

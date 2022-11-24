@@ -67,8 +67,8 @@ const generateRandomString = async (num) => {
 const refreshTokenExtractor = async (req) => {
     let token = null;
     
-    if (req && req.cookies && (req.cookies['refresh_token'] !== '')) {
-        token = req.cookies['refresh_token'];
+    if (req && req.cookies && (req.cookies['refreshToken'] !== '')) {
+        token = req.cookies['refreshToken'];
     }
     
     return token;
@@ -367,18 +367,22 @@ exports.localSignIn = async (req, res) => {
         // 액세스 토큰 발급
         const accessToken = jwt.sign(
             {
-                provider: user.provider,
-                email   : user.email
+                id: user.userId
             },
             process.env.JWT_KEY,
             {
                 expiresIn: '1d'
             }
         );
-    
-        // 리프레시 토큰 발급 (쿠키)
-        await tokenGenerator.refreshToken(req, res, user);
         
+        // 리프레시 토큰 발급 (쿠키)
+        try {
+            await tokenGenerator.refreshToken(req, res, user);
+        } catch {
+            return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+        }
+        
+        // 응답 객체 생성
         const signInResult = {
             userId     : user.userId,
             provider   : user.provider,
@@ -405,31 +409,45 @@ exports.kakaoSignIn = async (req, res) => {
     try {
         getKakaoTokenResult = await authProvider.getKakaoToken(code);
     } catch (error) {
-        return res.send(errResponse(baseResponse.DB_ERROR));
+        return res.send(errResponse(baseResponse.KAKAO_API_ERROR));
     }
     
     // 액세스 토큰을 받을 수 없는 경우
-    if (getKakaoTokenResult === 'apiError' || getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
+    if (getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG));
     }
     
     // 액세스 토큰으로 사용자 정보 요청
     const accessToken = getKakaoTokenResult.data.access_token;
-    const getKakaoUserInfoResult = await authProvider.getKakaoUserInfo(accessToken);
+    let getKakaoUserInfoResult;
+    try {
+        getKakaoUserInfoResult = await authProvider.getKakaoUserInfo(accessToken);
+    } catch {
+        return res.send(errResponse(baseResponse.KAKAO_API_ERROR));
+    }
     
     // 사용자 정보를 받을 수 없는 경우
-    if (getKakaoUserInfoResult === 'apiError' || getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
+    if (getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_ACCESS_TOKEN_WRONG));
     }
     
     // 기존에 가입한 계정 확인
     const email = getKakaoUserInfoResult.data.kakao_account.email;
-    let getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    let getUserInfo;
+    try {
+        getUserInfo = await authProvider.getUserInfoByEmail('kakao', email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
     // 기존에 가입한 계정이 없을 경우
     if (getUserInfo.length < 1) {
         // 신규 가입
-        getUserInfo = await authService.createOAuthUser('kakao', email);
+        try {
+            getUserInfo = await authService.createOAuthUser('kakao', email);
+        } catch {
+            return res.send(errResponse(baseResponse.DB_ERROR));
+        }
         
         // 신규 가입이 안 될 경우
         if (getUserInfo.length < 1) {
@@ -443,8 +461,24 @@ exports.kakaoSignIn = async (req, res) => {
         }
     }
     
-    // JWT 생성
-    await tokenGenerator(req, res, getUserInfo[0]);
+    // TODO: 유효시간 변경
+    // 액세스 토큰 발급
+    getUserInfo[0].accessToken = jwt.sign(
+        {
+            id: getUserInfo[0].userId
+        },
+        process.env.JWT_KEY,
+        {
+            expiresIn: '1d'
+        }
+    );
+    
+    // 리프레시 토큰 발급 (쿠키)
+    try {
+        await tokenGenerator.refreshToken(req, res, getUserInfo[0]);
+    } catch {
+        return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+    }
     
     return res.send(response(baseResponse.SUCCESS, getUserInfo[0]));
 };
@@ -454,13 +488,18 @@ exports.kakaoSignIn = async (req, res) => {
  * body : nickname
  */
 exports.addInfo = async (req, res) => {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const {nickname} = req.body;
     
     // 가입한 계정 확인
-    const getUserInfo = await authProvider.getUserInfoByEmail(provider, email);
-    if (getUserInfo.length < 1) {
-        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
+    let getUserInfo;
+    try {
+        getUserInfo = await authProvider.getUserInfoById(userId);
+        if (getUserInfo.length < 1) {
+            return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 닉네임 확인
@@ -480,19 +519,22 @@ exports.addInfo = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult !== undefined && nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult !== undefined && nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
-    const addUserInfoResponse = await authService.addUserInfo(provider, email, nickname);
+    const addUserInfoResponse = await authService.addUserInfo(getUserInfo[0].proivder, getUserInfo[0].email, getUserInfo[0].nickname);
     
     res.send(addUserInfoResponse);
 };
 
-
-/** JWT 재발급 API
- * [GET] /auth/common/refresh
+/** accessToken 재발급 API
+ * [GET] /auth/refresh
  */
 exports.getRefreshToken = async (req, res) => {
     // 토큰 검사
@@ -515,42 +557,45 @@ exports.getRefreshToken = async (req, res) => {
     });
     
     // 세션 정보 불러오기
-    const session = await authProvider.getSessionByToken(token);
-    if (session !== null) {
+    let session;
+    try {
+        session = await authProvider.getSessionByToken(token);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    if (session !== undefined && session !== null && session.length > 0) {
         // 현재 단말기에서 접속한 IP와 세션 정보에 있는 IP 비교
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        if (session.ip === ip) {
-            // IP가 일치하면 JWT 재발급
+        
+        // IP가 일치하면 JWT 재발급
+        if (session[0].ip === ip) {
+            // TODO: 유효시간 변경
+            // 액세스 토큰 발급
             const accessToken = jwt.sign(
                 {
-                    provider: session.User.provider,
-                    email   : session.User.email
+                    id: session.userId
                 },
                 process.env.JWT_KEY,
                 {
-                    expiresIn: '3h'
+                    expiresIn: '1d'
                 }
             );
-            res.cookie('accessToken', accessToken, {
-                httpOnly: true,
-            });
             
-            // 리프레시 토큰 재발급
-            const refreshToken = jwt.sign(
-                {},
-                process.env.JWT_KEY,
-                {
-                    expiresIn: '5d'
-                }
-            );
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                path    : '/auth/common'
-            });
+            const user = {
+                userId  : session[0].User.id,
+                provider: session[0].User.provider,
+                email   : session[0].User.email
+            }
             
-            // 세션 정보 수정
-            await authService.updateSession(session.refresh_token, refreshToken);
-            return res.send(response(baseResponse.SUCCESS));
+            // 리프레시 토큰 발급 (쿠키)
+            try {
+                await tokenGenerator.refreshToken(req, res, user);
+            } catch {
+                return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+            }
+            
+            return res.send(response(baseResponse.SUCCESS, accessToken));
         }
         // IP가 일치하지 않을 경우
         else {

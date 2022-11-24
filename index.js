@@ -71,7 +71,7 @@ require('./src/app/Auth/authRoute')(app);
 require('./src/app/Reward/rewardRoute')(app);
 
 // 서버 시작
-app.listen(port);
+app.listen(port, '0.0.0.0');
 
 // 서버 시작 알림
 customLogger.info(`${process?.env?.NODE_ENV ?? 'development'} - runningHigh API Server Start At Port ${port}`);

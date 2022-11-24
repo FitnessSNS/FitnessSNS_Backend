@@ -42,20 +42,19 @@ const refreshToken = async (req, res, user) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     let session;
     try {
-        session = await authProvider.getSessionByUserId(user.id);
+        session = await authProvider.getSessionByUserId(user.userId);
     } catch (error) {
         throw error;
     }
     
     // 세션 정보 수정/생성
     try {
-        if (session !== null) {
-            await authService.updateSession(session.refresh_token, refreshToken);
+        if (session !== null && session.length > 0) {
+            await authService.updateSession(user.userId, refreshToken, ip);
         } else {
-            await authService.createSession(user.id, refreshToken, ip);
+            await authService.createSession(user.userId, refreshToken, ip);
         }
     } catch (error) {
-        customLogger.error(`tokenGenerator - update/create session error\n${error.message}`);
         throw error;
     }
 };
