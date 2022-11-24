@@ -488,13 +488,18 @@ exports.kakaoSignIn = async (req, res) => {
  * body : nickname
  */
 exports.addInfo = async (req, res) => {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const {nickname} = req.body;
     
     // 가입한 계정 확인
-    const getUserInfo = await authProvider.getUserInfoByEmail(provider, email);
-    if (getUserInfo.length < 1) {
-        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
+    let getUserInfo;
+    try {
+        getUserInfo = await authProvider.getUserInfoById(userId);
+        if (getUserInfo.length < 1) {
+            return res.send(errResponse(baseResponse.OAUTH_ADDINFO_USER_NOT_FOUND));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 닉네임 확인
@@ -514,12 +519,16 @@ exports.addInfo = async (req, res) => {
     }
     
     // 닉네임 중복검사
-    const nicknameResult = await authProvider.getUserNickname(nickname);
-    if (nicknameResult !== undefined && nicknameResult.length > 0) {
-        return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+    try {
+        const nicknameResult = await authProvider.getUserNickname(nickname);
+        if (nicknameResult !== undefined && nicknameResult.length > 0) {
+            return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_DUPLICATED));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
-    const addUserInfoResponse = await authService.addUserInfo(provider, email, nickname);
+    const addUserInfoResponse = await authService.addUserInfo(getUserInfo[0].proivder, getUserInfo[0].email, getUserInfo[0].nickname);
     
     res.send(addUserInfoResponse);
 };

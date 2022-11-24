@@ -93,7 +93,6 @@ exports.getUserNickname = async (nickname) => {
 // 사용자 가입확인
 exports.getUserInfoByEmail = async (provider, email) => {
     try {
-        // Binary 타입으로 변환해서 조회
         return await prisma.$queryRaw(
             Prisma.sql`
                 SELECT id                     AS userId,
@@ -108,6 +107,27 @@ exports.getUserInfoByEmail = async (provider, email) => {
         );
     } catch (error) {
         customLogger.error(`getUserInfoByEmail - database error\n${error.message}`);
+        error.type = 'db';
+        throw error;
+    }
+};
+
+// 사용자 가입확인 (ID 조회)
+exports.getUserInfoById = async (userId) => {
+    try {
+        return await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id                     AS userId,
+                       provider,
+                       email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE id = ${userId};
+            `
+        );
+    } catch (error) {
+        customLogger.error(`getUserInfoById - database error\n${error.message}`);
         error.type = 'db';
         throw error;
     }

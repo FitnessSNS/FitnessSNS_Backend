@@ -268,13 +268,17 @@ exports.addUserInfo = async (provider, email, nickname) => {
                 nickname: nicknameBuffer
             }
         });
-        
-        // 계정정보 불러오기
+    } catch (error) {
+        customLogger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 계정정보 불러오기
+    try {
         const userInfoResult = await authProvider.getUserInfoByEmail(provider, email);
         
         return response(baseResponse.SUCCESS, userInfoResult[0]);
-    } catch (error) {
-        customLogger.error(`updateOAuthAddInfo - database error\n${error.message}`);
+    } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
 };
