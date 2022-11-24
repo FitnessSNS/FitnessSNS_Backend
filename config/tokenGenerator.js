@@ -55,7 +55,6 @@ const refreshToken = async (req, res, user) => {
             await authService.createSession(user.id, refreshToken, ip);
         }
     } catch (error) {
-        customLogger.error(`tokenGenerator - update/create session error\n${error.message}`);
         throw error;
     }
 };
