@@ -9,15 +9,20 @@ const specialCharacter = /[^\w\sㄱ-힣]|[\_]/g;
 // 경도, 위도 검사
 const coordinateCheck = /^\d+\.\d+$/;
 
+// TODO: 테스트
 /** 리워드 매인 API
  * [GET] /rewards/users
  */
 exports.getRewardInfo = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     
-    const getRewardInfoResult = await rewardProvider.retrieveUserInfo(provider, email);
+    try {
+        const getRewardInfoResult = await rewardProvider.retrieveRewardMain(userId);
     
-    return res.send(getRewardInfoResult);
+        return res.send(getRewardInfoResult);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
 };
 
 /** 운동 선택 API

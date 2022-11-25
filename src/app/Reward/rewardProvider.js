@@ -1,4 +1,4 @@
-const { PrismaClient, Prisma } = require('@prisma/client');
+const {PrismaClient, Prisma} = require('@prisma/client');
 const prisma = new PrismaClient();
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require("../../../config/response");
@@ -60,38 +60,51 @@ exports.retrieveChallenge = async () => {
 };
 
 // 사용자 리워드 정보 불러오기
-exports.retrieveUserInfo = async (provider, email) => {
+exports.retrieveRewardMain = async (userId) => {
     // 사용자 정보 불러오기
-    const user =  await prisma.$queryRaw(
-        Prisma.sql`
-            SELECT id AS userId, provider, email,
-                   CAST(nickname AS CHAR) AS nickname,
-                   status
-            FROM User
-            WHERE provider = ${provider} AND
-                email = ${email};
-        `
-    );
-    
-    // 사용자 정보가 없을 경우 에러 발생
-    if (user.length < 1) {
-        return errResponse(baseResponse.REWARD_USER_INFO_NOT_FOUND);
+    let user;
+    try {
+        user = await prisma.$queryRaw(
+            Prisma.sql`
+                SELECT id                     AS userId,
+                       provider,
+                       email,
+                       CAST(nickname AS CHAR) AS nickname,
+                       status
+                FROM User
+                WHERE id = ${userId};
+            `
+        );
+        
+        // 사용자 정보가 없을 경우 에러 발생
+        if (user.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_INFO_NOT_FOUND);
+        }
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - user info database error\n${error.message}`);
+        throw error;
     }
     
     // 사용자 리워드 정보
-    const userReward = await prisma.Reward.findMany({
-        where: {
-            User: {
-                provider: provider,
-                email: email
+    let userReward;
+    try {
+        userReward = await prisma.Reward.findMany({
+            where : {
+                User: {
+                    provider: user[0].provider,
+                    email   : user[0].email
+                }
+            },
+            select: {
+                id    : true,
+                point : true,
+                reason: true
             }
-        },
-        select: {
-            id: true,
-            point: true,
-            reason: true
-        }
-    });
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - user reward database error\n${error.message}`);
+        throw error;
+    }
     
     // 리워드 포인트 총합
     let totalReward = 0;
@@ -106,16 +119,22 @@ exports.retrieveUserInfo = async (provider, email) => {
     today.setHours(9, 0, 0, 0);
     
     // 멘트 불러오기
-    const todayMention = await prisma.Mention.findMany({
-        where: {
-            date: {
-                equals: today
+    let todayMention;
+    try {
+        todayMention = await prisma.Mention.findMany({
+            where : {
+                date: {
+                    equals: today
+                }
+            },
+            select: {
+                content: true
             }
-        },
-        select: {
-            content: true
-        }
-    });
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - today mention database error\n${error.message}`);
+        throw error;
+    }
     
     // 멘트가 없을 경우 에러 발생
     if (todayMention.length < 1) {
@@ -129,24 +148,30 @@ exports.retrieveUserInfo = async (provider, email) => {
     const tomorrow = new Date(todayYear, todayMonth, todayDate, 9, 0, 0, 0);
     
     // 사용자 운동 정보
-    const userExercise = await prisma.Exercise.findMany({
-        where: {
-            User: {
-                provider: provider,
-                email: email
+    let userExercise;
+    try {
+        userExercise = await prisma.Exercise.findMany({
+            where : {
+                User      : {
+                    provider: user[0].provider,
+                    email   : user[0].email
+                },
+                created_at: {
+                    gt: today,
+                    lt: tomorrow
+                }
             },
-            created_at: {
-                gt: today,
-                lt: tomorrow
+            select: {
+                id      : true,
+                distance: true,
+                time    : true,
+                calorie : true
             }
-        },
-        select: {
-            id: true,
-            distance: true,
-            time: true,
-            calorie: true
-        }
-    });
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - user exercise database error\n${error.message}`);
+        throw error;
+    }
     
     // 운동 정보 계산
     let todayDistance = 0;
@@ -163,19 +188,25 @@ exports.retrieveUserInfo = async (provider, email) => {
     const timeResult = getTodayTime(todayTime);
     
     // 쇼핑 정보
-    const shoppingList = await prisma.Coupon.findMany({
-        take: 6,
-        where: {
-            status: 'RUN'
-        },
-        select: {
-            id: true,
-            image: true,
-            title: true,
-            content: true,
-            price: true
-        }
-    });
+    let shoppingList;
+    try {
+        shoppingList = await prisma.Coupon.findMany({
+            take  : 6,
+            where : {
+                status: 'RUN'
+            },
+            select: {
+                id     : true,
+                image  : true,
+                title  : true,
+                content: true,
+                price  : true
+            }
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - shopping list database error\n${error.message}`);
+        throw error;
+    }
     
     // 쇼핑 정보가 없을 경우 에러 발생
     if (shoppingList.length < 1) {
@@ -183,64 +214,86 @@ exports.retrieveUserInfo = async (provider, email) => {
     }
     
     // 챌린지 정보
-    const userChallenge = await prisma.UserChallenge.findMany({
-        where: {
-            User: {
-                provider: provider,
-                email: email
+    let userChallenge;
+    try {
+        userChallenge = await prisma.UserChallenge.findMany({
+            where : {
+                User  : {
+                    provider: user[0].provider,
+                    email   : user[0].email
+                },
+                status: 'RUN'
             },
-            status: 'RUN'
-        },
-        select: {
-            id: true,
-            challenge_id: true,
-            count: true
-        }
-    });
+            select: {
+                id          : true,
+                challenge_id: true,
+                count       : true
+            }
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserInfo - user challenge database error\n${error.message}`);
+        throw error;
+    }
     
     // 진행중인 챌린지가 있을 경우
     let challengeInfo;
     if (userChallenge.length > 0 && userChallenge[0] !== undefined) {
-        challengeInfo = await prisma.Challenge.findUnique({
-            where: {
-                id: userChallenge[0].challenge_id
-            },
-            select: {
-                id: true,
-                title: true,
-                content: true
-            }
-        });
+        try {
+            challengeInfo = await prisma.Challenge.findUnique({
+                where : {
+                    id: userChallenge[0].challenge_id
+                },
+                select: {
+                    id     : true,
+                    title  : true,
+                    content: true
+                }
+            });
+        } catch (error) {
+            customLogger.error(`retrieveUserInfo - challenge database error\n${error.message}`);
+            throw error;
+        }
         
         // 오늘 챌린지 성공 여부 확인
-        const todayChallengeCheck = await prisma.ChallengeConfirm.findMany({
-            where: {
-                user_challenge_id: userChallenge[0].id,
-                created_at: {
-                    gt: today,
-                    lt: tomorrow
+        let todayChallengeCheck;
+        try {
+            todayChallengeCheck = await prisma.ChallengeConfirm.findMany({
+                where : {
+                    user_challenge_id: userChallenge[0].id,
+                    created_at       : {
+                        gt: today,
+                        lt: tomorrow
+                    }
+                },
+                select: {
+                    isSuccess: true
                 }
-            },
-            select: {
-                isSuccess: true
-            }
-        });
+            });
+        } catch (error) {
+            customLogger.error(`retrieveUserInfo - challenge confirm database error\n${error.message}`);
+            throw error;
+        }
         
         if (todayChallengeCheck[0] !== undefined) {
             challengeInfo.isSuccess = todayChallengeCheck[0].isSuccess;
         } else {
             challengeInfo.isSuccess = false;
         }
-    // 진행중인 챌린지가 없을 경우 챌린지 목록 불러오기
     } else {
-        challengeInfo = await prisma.Challenge.findMany({
-            take: 4,
-            select: {
-                id: true,
-                title: true,
-                content: true
-            }
-        });
+        // 진행중인 챌린지가 없을 경우 챌린지 목록 불러오기
+        try {
+            challengeInfo = await prisma.Challenge.findMany({
+                take  : 4,
+                select: {
+                    id     : true,
+                    title  : true,
+                    content: true
+                }
+            });
+        } catch (error) {
+            customLogger.error(`retrieveUserInfo - challenge database error\n${error.message}`);
+            throw error;
+        }
     }
     
     // 챌린지 정보가 없을 경우 에러 발생
@@ -248,19 +301,20 @@ exports.retrieveUserInfo = async (provider, email) => {
         return errResponse(baseResponse.REWARD_CHALLENGE_INFO_NOT_FOUND);
     }
     
+    // 응답 객체 생성
     const rewardMainResult = {
-        userId: user[0].userId,
+        userId    : user[0].userId,
         userStatus: user[0].status,
-        point: totalReward,
-        nickname: user[0].nickname,
-        ment: todayMention[0].content,
-        activity: {
-            time_stack: timeResult,
+        point     : totalReward,
+        nickname  : user[0].nickname,
+        ment      : todayMention[0].content,
+        activity  : {
+            time_stack    : timeResult,
             distance_stack: todayDistance,
-            calorie_stack: todayCalorie
+            calorie_stack : todayCalorie
         },
-        shopping: shoppingList,
-        challenge: challengeInfo
+        shopping  : shoppingList,
+        challenge : challengeInfo
     };
     
     return response(baseResponse.SUCCESS, rewardMainResult);
@@ -270,15 +324,15 @@ exports.retrieveUserInfo = async (provider, email) => {
 exports.retrieveUserExerciseGroup = async (provider, email, type) => {
     // 사용자 그룹 참가 확인
     const userGroup = await prisma.UserGroup.findMany({
-        where: {
-            User: {
+        where : {
+            User  : {
                 provider: provider,
-                email: email
+                email   : email
             },
             status: 'RUN'
         },
         select: {
-            id: true,
+            id      : true,
             group_id: true,
         }
     });
@@ -296,16 +350,18 @@ exports.retrieveUserInfo = async (provider, email) => {
     try {
         return await prisma.$queryRaw(
             Prisma.sql`
-                SELECT id AS userId, provider, email,
+                SELECT id                     AS userId,
+                       provider,
+                       email,
                        CAST(nickname AS CHAR) AS nickname,
                        status
                 FROM User
-                WHERE provider = ${provider} AND
-                    email = ${email};
+                WHERE provider = ${provider}
+                  AND email = ${email};
             `
         );
     } catch (error) {
-        logger.error(`retrieveUserInfo - database error`);
+        customLogger.error(`retrieveUserInfo - database error`);
         throw error;
     }
 };
@@ -316,7 +372,7 @@ exports.retrieveUserExerciseLocation = async (userId) => {
         return await prisma.ExerciseLocation.findMany({
             where: {
                 user_id: userId,
-                status: 'RUN'
+                status : 'RUN'
             }
         });
     } catch (error) {
@@ -331,12 +387,12 @@ exports.retrieveUserExercise = async (userId, today, tomorrow) => {
     try {
         return await prisma.Exercise.findMany({
             where: {
-                user_id: userId,
+                user_id   : userId,
                 created_at: {
                     gte: today,
-                    lt: tomorrow
+                    lt : tomorrow
                 },
-                status: 'RUN'
+                status    : 'RUN'
             }
         });
     } catch (error) {
