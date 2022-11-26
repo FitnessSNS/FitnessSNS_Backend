@@ -231,17 +231,35 @@ exports.postUserRunningStop = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningEnd = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const forceEnd = req.query.forceEnd;
     const {longitude, latitude} = req.body;
+    
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
     
     // 강제 종료 여부 확인
     if (forceEnd !== true && forceEnd !== false) {
         return res.send(errResponse(baseResponse.RUNNING_END_FORCE_END_WRONG));
     }
-    
+   
     // 경도와 위도 정보가 없을 경우
-    if (longitude === undefined || latitude === undefined) {
+    if (longitude === undefined || longitude === null || longitude === ''
+        || latitude === undefined || latitude === null || latitude === '') {
         return res.send(errResponse(baseResponse.RUNNING_END_LOCATION_EMPTY));
     }
     
@@ -251,7 +269,7 @@ exports.postUserRunningEnd = async function (req, res) {
     }
     
     // 운동 기록 저장 후 종료
-    const postUserRunningEndResponse = await rewardService.endUserRunning(provider, email, forceEnd, longitude, latitude);
+    const postUserRunningEndResponse = await rewardService.endUserRunning(userInfo[0], forceEnd, longitude, latitude);
     
     return res.send(postUserRunningEndResponse);
 };
@@ -261,7 +279,7 @@ exports.postUserRunningEnd = async function (req, res) {
  * body : exercise_id, image
  */
 exports.postRunningImage = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     let {exercise_id} = req.body
     exercise_id = Number(exercise_id);
     

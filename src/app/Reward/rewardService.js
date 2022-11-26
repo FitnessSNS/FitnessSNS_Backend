@@ -1,6 +1,5 @@
 const {PrismaClient, Prisma} = require('@prisma/client');
 const prisma = new PrismaClient();
-const {logger} = require('../../../config/winston');
 const rewardProvider = require('./rewardProvider');
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require('../../../config/response');
@@ -147,7 +146,7 @@ exports.startUserRunning = async (user, longitude, latitude) => {
         // 트랜잭션 처리
         await prisma.$transaction([createExerciseLocation, createExercise]);
     } catch (error) {
-        logger.error(`startUserRunning - transaction error\n${error.message}`);
+        customLogger.error(`startUserRunning - transaction error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
     
@@ -157,6 +156,11 @@ exports.startUserRunning = async (user, longitude, latitude) => {
         getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
     } catch {
         return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 조회된 운동 기록이 없을 경우
+    if (getUserExercise.length < 1) {
+        return errResponse(baseResponse.RUNNING_USER_EXERCISE_NOT_FOUND);
     }
     // 운동 시간 계산
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
@@ -282,7 +286,7 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
         // 트랜잭션 처리
         await prisma.$transaction([locationChange, exerciseChange]);
     } catch (error) {
-        logger.error(`checkUserRunning - transaction error\n${error.message}`);
+        customLogger.error(`checkUserRunning - transaction error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
     
@@ -293,6 +297,12 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
+    
+    // 조회된 운동 기록이 없을 경우
+    if (getUserExercise.length < 1) {
+        return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+    }
+    
     // 운동 시간 계산
     const checkTime = getExerciseTime(timeDiff);
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
@@ -353,6 +363,12 @@ exports.restartUserRunning = async (user, longitude, latitude) => {
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
+   
+    // 조회된 운동 기록이 없을 경우
+    if (getUserExercise.length < 1) {
+        return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+    }
+    
     // 운동 시간 계산
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
     
@@ -498,6 +514,11 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
         return errResponse(baseResponse.DB_ERROR);
     }
     
+    // 조회된 운동 기록이 없을 경우
+    if (getUserExercise.length < 1) {
+        return errResponse(baseResponse.RUNNING_STOP_EXERCISE_NOT_FOUND);
+    }
+    
     // 운동 시간 계산
     const checkTime = getExerciseTime(timeDiff);
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
@@ -520,37 +541,81 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
 };
 
 // 운동 종료
-exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) => {
-    try {
-        // 사용자 정보 불러오기
-        const user = await rewardProvider.retrieveUserInfo(provider, email);
-        
-        // 사용자 정보가 없을 경우 에러 발생
-        if (user.length < 1) {
-            return errResponse(baseResponse.RUNNING_END_USER_NOT_FOUND);
+exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
+    // 오늘 날짜
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth() + 1;
+    const todayDate = today.getDate();
+    
+    // 날짜 비교용 오늘, 내일 날짜 생성
+    const todayCheck = new Date();
+    todayCheck.setHours(9, 0, 0, 0);
+    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
+    tomorrowCheck.setHours(9, 0, 0, 0);
+    
+    // 강제 종료 여부 확인
+    let addDistance, addTime, addCalorie, userExercise;
+    if (!forceEnd) {
+        // 이전 운동 위치 불러오기
+        let priorLocation;
+        try {
+            priorLocation = await rewardProvider.retrieveUserExerciseLocation(user.userId);
+        } catch {
+            return errResponse(baseResponse.DB_ERROR);
         }
         
-        // 오늘 날짜
-        const today = new Date();
-        const todayYear = today.getFullYear();
-        const todayMonth = today.getMonth() + 1;
-        const todayDate = today.getDate();
-        let todayCheck, tomorrowCheck;
-        let userExercise;
+        // 이전 운동 위치가 없을 경우
+        if (priorLocation.length < 1) {
+            return errResponse(baseResponse.RUNNING_END_PRIOR_LOCATION_NOT_FOUND);
+        }
+        
+        // 운동 거리 간격 계산
+        const distance = await getDistanceFromLatLon(priorLocation[0].longitude, priorLocation[0].latitude, longitude, latitude);
+        
+        // 운동 시간 간격 계산
+        let timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
+        
+        // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
+        const met = 3.5 * 60 * timeDiff / (60 * 1000);
+        const calorie = Number((3.3 * met / 1000) * 5).toFixed(4);
+        
+        // 운동 시간 간격이 0보다 작거나 같은 경우
+        if (timeDiff <= 0) {
+            return errResponse(baseResponse.RUNNING_END_TIME_LESS_ZERO);
+            // 운동 시간 간격이 3시간 이상일 경우
+        } else if (timeDiff >= 10800000) {
+            timeDiff = 10800000;
+        }
+        
+        // 운동 기록 조회
+        try {
+            userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        } catch {
+            return errResponse(baseResponse.DB_ERROR);
+        }
+        
+        // 운동 기록이 조회 안 될 경우 에러
+        if (userExercise.length < 1) {
+            return errResponse(baseResponse.RUNNING_END_EXERCISE_NOT_FOUND);
+        }
+        
+        // 추가된 운동 거리, 시간 계산
+        addDistance = userExercise[0].distance + distance;
+        addTime = new Date(userExercise[0].time.getTime() + timeDiff);
+        addCalorie = Number(userExercise[0].calorie) + Number(calorie);
+    }
+    
+    // 운동 위치, 운동 기록 수정 시작
+    try {
         let locationChange, exerciseChange;
         
         // 강제 종료 여부 확인
         if (forceEnd) {
-            // 날짜 비교용 오늘, 내일 날짜 생성
-            todayCheck = new Date();
-            todayCheck.setHours(9, 0, 0, 0);
-            tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-            tomorrowCheck.setHours(9, 0, 0, 0);
-            
             // 이전 운동 위치 수정
             locationChange = prisma.ExerciseLocation.updateMany({
                 where: {
-                    user_id: user[0].userId,
+                    user_id: user.userId,
                     status : 'RUN'
                 },
                 data : {
@@ -561,7 +626,7 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
             // 운동 기록 수정 (가장 최근 위치로 저장)
             exerciseChange = prisma.Exercise.updateMany({
                 where: {
-                    user_id   : user[0].userId,
+                    user_id   : user.userId,
                     created_at: {
                         gte: todayCheck,
                         lt : tomorrowCheck
@@ -573,24 +638,10 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
                 }
             });
         } else {
-            // 이전 운동 위치 불러오기
-            const priorLocation = await rewardProvider.retrieveUserExerciseLocation(user[0].userId);
-            
-            // 이전 운동 위치가 없을 경우
-            if (priorLocation.length < 1) {
-                return errResponse(baseResponse.RUNNING_END_PRIOR_LOCATION_NOT_FOUND);
-            }
-            
-            // 운동 거리 간격 계산
-            const distance = await getDistanceFromLatLon(priorLocation[0].longitude, priorLocation[0].latitude, longitude, latitude);
-            
-            // 운동 시간 간격 계산
-            let timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
-            
             // 이전 운동 위치 수정
             locationChange = prisma.ExerciseLocation.updateMany({
                 where: {
-                    user_id: user[0].userId,
+                    user_id: user.userId,
                     status : 'RUN'
                 },
                 data : {
@@ -601,41 +652,10 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
                 }
             });
             
-            // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
-            const met = 3.5 * 60 * timeDiff / (60 * 1000);
-            const calorie = Number((3.3 * met / 1000) * 5).toFixed(4);
-            
-            // 운동 시간 간격이 0보다 작거나 같은 경우
-            if (timeDiff <= 0) {
-                return errResponse(baseResponse.RUNNING_END_TIME_LESS_ZERO);
-                // 운동 시간 간격이 3시간 이상일 경우
-            } else if (timeDiff >= 10800000) {
-                timeDiff = 10800000;
-            }
-            
-            // 날짜 비교용 오늘, 내일 날짜 생성
-            todayCheck = new Date();
-            todayCheck.setHours(9, 0, 0, 0);
-            tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-            tomorrowCheck.setHours(9, 0, 0, 0);
-            
-            // 운동 기록 조회
-            userExercise = await rewardProvider.retrieveUserExercise(user[0].userId, todayCheck, tomorrowCheck);
-            
-            // 운동 기록이 조회 안 될 경우 에러
-            if (userExercise.length < 1) {
-                return errResponse(baseResponse.RUNNING_END_EXERCISE_NOT_FOUND);
-            }
-            
-            // 추가된 운동 거리, 시간 계산
-            let addDistance = userExercise[0].distance + distance;
-            let addTime = new Date(userExercise[0].time.getTime() + timeDiff);
-            let addCalorie = Number(userExercise[0].calorie) + Number(calorie);
-            
             // 운동 기록 수정
             exerciseChange = prisma.Exercise.updateMany({
                 where: {
-                    user_id   : user[0].userId,
+                    user_id   : user.userId,
                     created_at: {
                         gte: todayCheck,
                         lt : tomorrowCheck
@@ -652,33 +672,35 @@ exports.endUserRunning = async (provider, email, forceEnd, longitude, latitude) 
             });
         }
         
-        // 운동 기록 재조회 (트랜잭션 처리 전 수행)
-        const getUserExercise = await rewardProvider.retrieveUserExercise(user[0].userId, todayCheck, tomorrowCheck);
-        const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
-        
         // 트랜잭션 처리
-        if (locationChange !== undefined && exerciseChange !== undefined) {
-            await prisma.$transaction([locationChange, exerciseChange]);
-        }
-        
-        // 응답 객체 생성
-        const result = {
-            exercise_id   : getUserExercise[0].id,
-            user_id       : user[0].userId,
-            nickname      : user[0].nickname,
-            challenge_goal: 5000,
-            time          : exerciseTime,
-            distance      : getUserExercise[0].distance,
-            calorie       : Math.floor(getUserExercise[0].calorie),
-            image         : getUserExercise[0].image,
-            forceEnd      : forceEnd
-        }
-        
-        return response(baseResponse.SUCCESS, result);
+        await prisma.$transaction([locationChange, exerciseChange]);
     } catch (error) {
-        logger.error(`endUserRunning - database error\n: ${error.message}`);
+        customLogger.error(`endUserRunning - transaction error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
+    
+    // 종료 기준 측정값
+    const finalDistance = addDistance ?? userExercise[0].distance;
+    const finalExerciseTime = addTime ?? userExercise[0].time;
+    const finalCalorie = addCalorie ?? userExercise[0].calorie;
+    
+    // 운동 시간 계산
+    const exerciseTime = getExerciseTime(finalExerciseTime.getTime());
+    
+    // 응답 객체 생성
+    const result = {
+        exercise_id   : userExercise[0].id,
+        user_id       : user.userId,
+        nickname      : user.nickname,
+        challenge_goal: 5000,
+        time          : exerciseTime,
+        distance      : finalDistance,
+        calorie       : Math.floor(finalCalorie),
+        image         : userExercise[0].image,
+        forceEnd      : forceEnd
+    }
+    
+    return response(baseResponse.SUCCESS, result);
 };
 
 // 운동 사진 등록
@@ -705,10 +727,9 @@ exports.createRunningImage = async (provider, email, exerciseId, imageLink) => {
         
         // 운동 인증 사진 추가
         await prisma.Exercise.update({
-            where: {
+            where  : {
                 id: exerciseId,
-            },
-            data : {
+            }, data: {
                 image: imageLink
             }
         });
@@ -736,7 +757,7 @@ exports.createRunningImage = async (provider, email, exerciseId, imageLink) => {
         const imageName = imageLink.slice(61);
         await deleteExerciseImage(imageName);
         
-        logger.error(`createRunningImage - database error\n: ${error.message}`);
+        customLogger.error(`createRunningImage - database error\n: ${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
