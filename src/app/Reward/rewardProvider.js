@@ -347,11 +347,10 @@ exports.retrieveUserExerciseLocation = async (userId) => {
             }
         });
     } catch (error) {
-        customLogger.error(`retrieveUserExerciseLocation - database error`);
+        customLogger.error(`retrieveUserExerciseLocation - database error\n${error.message}`);
         throw error;
     }
 };
-
 
 // 사용자 운동 기록 조회
 exports.retrieveUserExercise = async (userId, today, tomorrow) => {
@@ -367,7 +366,7 @@ exports.retrieveUserExercise = async (userId, today, tomorrow) => {
             }
         });
     } catch (error) {
-        logger.error(`retrieveUserExercise - database error`);
+        customLogger.error(`retrieveUserExercise - database error\n${error.message}`);
         throw error;
     }
 };

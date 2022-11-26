@@ -123,7 +123,7 @@ exports.postUserRunning = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_TYPE_WRONG));
     }
     
-    const postUserRunningResponse = await rewardService.startUserRunning(userId, longitude, latitude);
+    const postUserRunningResponse = await rewardService.startUserRunning(userInfo[0], longitude, latitude);
     
     return res.send(postUserRunningResponse);
 };

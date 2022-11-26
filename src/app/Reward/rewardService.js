@@ -83,27 +83,16 @@ exports.createChallenge = async (title, content, condition, end_date) => {
         
         return response(baseResponse.SUCCESS, challenge);
     } catch (error) {
-        logger.error(`createChallenge - database error\n: ${error.message}`);
+        customLogger.error(`createChallenge - database error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
 };
 
 // 운동 시작
-exports.startUserRunning = async (userId, longitude, latitude) => {
-    // 사용자 정보 불러오기
-    let user;
-    try {
-        user = await rewardProvider.retrieveUserInfo(userId);
-        if (user.length < 1) {
-            return errResponse(baseResponse.RUNNING_USER_NOT_FOUND);
-        }
-    } catch {
-        return errResponse(baseResponse.DB_ERROR);
-    }
-    
+exports.startUserRunning = async (user, longitude, latitude) => {
     // 운동 위치 조회
     try {
-        const userExerciseLocation = await rewardProvider.retrieveUserExerciseLocation(user[0].userId);
+        const userExerciseLocation = await rewardProvider.retrieveUserExerciseLocation(user.userId);
         
         // 종료하지 않은 운동 위치가 있을 경우
         if (userExerciseLocation.length > 0) {
@@ -113,39 +102,42 @@ exports.startUserRunning = async (userId, longitude, latitude) => {
         return errResponse(baseResponse.DB_ERROR);
     }
     
+    // 날짜 비교용 오늘, 내일 날짜 생성
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth() + 1;
+    const todayDate = today.getDate();
+    const todayCheck = new Date();
+    todayCheck.setHours(9, 0, 0, 0);
+    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
+    tomorrowCheck.setHours(9, 0, 0, 0);
     
+    // 운동 기록 조회
     try {
-        // 운동 위치 생성
-        const createExerciseLocation = prisma.ExerciseLocation.create({
-            data: {
-                user_id  : user[0].userId,
-                longitude: longitude,
-                latitude : latitude
-            }
-        });
-        
-        // 날짜 비교용 오늘, 내일 날짜 생성
-        const today = new Date();
-        const todayYear = today.getFullYear();
-        const todayMonth = today.getMonth() + 1;
-        const todayDate = today.getDate();
-        const todayCheck = new Date();
-        todayCheck.setHours(9, 0, 0, 0);
-        const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-        tomorrowCheck.setHours(9, 0, 0, 0);
-        
-        // 운동 기록 조회
-        const userExercise = await rewardProvider.retrieveUserExercise(user[0].userId, todayCheck, tomorrowCheck);
+        const userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
         
         // 종료되지 않은 운동 기록이 있을 경우
         if (userExercise.length > 0) {
             return errResponse(baseResponse.RUNNING_USER_EXERCISE_EXIST);
         }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    try {
+        // 운동 위치 생성
+        const createExerciseLocation = prisma.ExerciseLocation.create({
+            data: {
+                user_id  : user.userId,
+                longitude: longitude,
+                latitude : latitude
+            }
+        });
         
         // 운동 기록 생성
         const createExercise = prisma.Exercise.create({
             data: {
-                user_id : user[0].userId,
+                user_id : user.userId,
                 distance: 0,
                 time    : new Date(0),
                 calorie : 0
@@ -154,30 +146,36 @@ exports.startUserRunning = async (userId, longitude, latitude) => {
         
         // 트랜잭션 처리
         await prisma.$transaction([createExerciseLocation, createExercise]);
-        
-        // 운동 기록 재조회
-        const getUserExercise = await rewardProvider.retrieveUserExercise(user[0].userId, todayCheck, tomorrowCheck);
-        const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
-        
-        // 응답 객체 생성
-        const result = {
-            exercise_id   : getUserExercise[0].id,
-            user_id       : user[0].userId,
-            nickname      : user[0].nickname,
-            check_time    : '00:00:00',
-            challenge_goal: 5000,
-            time          : exerciseTime,
-            distance      : 0,
-            calorie       : 0,
-            image         : getUserExercise[0].image,
-            forceEnd      : false
-        }
-        
-        return response(baseResponse.SUCCESS, result);
     } catch (error) {
-        logger.error(`createUserRunning - database error\n: ${error.message}`);
+        logger.error(`startUserRunning - transaction error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
+    
+    // 운동 기록 재조회
+    let getUserExercise;
+    try {
+        getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    // 운동 시간 계산
+    const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
+    
+    // 응답 객체 생성
+    const result = {
+        exercise_id   : getUserExercise[0].id,
+        user_id       : user.userId,
+        nickname      : user.nickname,
+        check_time    : '00:00:00',
+        challenge_goal: 5000,
+        time          : exerciseTime,
+        distance      : 0,
+        calorie       : 0,
+        image         : getUserExercise[0].image,
+        forceEnd      : false
+    }
+    
+    return response(baseResponse.SUCCESS, result);
 };
 
 // 운동 진행
