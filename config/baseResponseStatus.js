@@ -5,12 +5,19 @@ module.exports = {
     // -----------------
     // 1. Auth
     // -----------------
-    // 토큰
+    // 액세스 토큰
     SIGNUP_TOKEN_EMPTY: {isSuccess: false, code: 1051, message: "회원가입 토큰이 없습니다"},
     SIGNUP_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1052, message: "회원가입 토큰 에러"},
     SIGNIN_TOKEN_EMPTY: {isSuccess: false, code: 1053, message: "로그인 토큰이 없습니다"},
     SIGNIN_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1054, message: "로그인 토큰 에러"},
-    SIGNIN_REFRESH_TOKEN_GENERATE_FAIL: {isSuccess: false, code: 1055, message: "리프레시 토큰 생성 에러"},
+    
+    // 리프레시 토큰
+    REFRESH_TOKEN_EMPTY: {isSuccess: false, code: 1061, message: "리프레시 토큰이 없습니다"},
+    REFRESH_TOKEN_EXPIRED: {isSuccess: false, code: 1062, message: "리프레시 토큰이 만료됐습니다"},
+    REFRESH_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1063, message: "리프레시 토큰 복호화를 실패했습니다"},
+    REFRESH_TOKEN_GENERATE_FAIL: {isSuccess: false, code: 1064, message: "리프레시 토큰 생성 에러"},
+    REFRESH_TOKEN_IP_NOT_MATCH: {isSuccess: false, code: 1065, message: "IP가 일치하지 않습니다. 로그인을 다시 해주세요"},
+    REFRESH_TOKEN_SESSION_DELETED: {isSuccess: false, code: 1066, message: "세션 정보가 삭제됐습니다. 로그인을 다시 해주세요"},
     
     // 이메일 인증
     EMAIL_VERIFICATION_EMAIL_EMPTY: {isSuccess: false, code: 1101, message: "이메일을 입력해주세요"},
@@ -39,10 +46,9 @@ module.exports = {
     OAUTH_AUTHORIZATION_PROVIDER_WRONG: {isSuccess: false, code: 1131, message: "SNS 플랫폼을 확인해주세요"},
     
     // 로그인
-    SIGNIN_LOCAL_PASSPORT: {isSuccess: false, code: 1141, message: "로그인을 할 수 없습니다 / Passport Error"},
-    SIGNIN_LOCAL_USER_NOT_FOUND: {isSuccess: false, code: 1142, message: "사용자 정보를 찾을 수 없습니다"},
-    SIGNIN_LOCAL_USER_STATUS: {isSuccess: false, code: 1143, message: "사용 중지된 계정입니다"},
-    SIGNIN_LOCAL_USER_PASSWORD_WRONG: {isSuccess: false, code: 1144, message: "비밀번호를 다시 확인해주세요"},
+    SIGNIN_LOCAL_USER_NOT_FOUND: {isSuccess: false, code: 1141, message: "사용자 정보를 찾을 수 없습니다"},
+    SIGNIN_LOCAL_USER_STATUS: {isSuccess: false, code: 1142, message: "사용 중지된 계정입니다"},
+    SIGNIN_LOCAL_USER_PASSWORD_WRONG: {isSuccess: false, code: 1143, message: "비밀번호를 다시 확인해주세요"},
     
     SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG: {isSuccess: false, code: 1151, message: "카카오 인가코드를 다시 확인해주세요"},
     SIGNIN_KAKAO_ACCESS_TOKEN_WRONG: {isSuccess: false, code: 1152, message: "카카오 액세스 토큰을 다시 확인해주세요"},
@@ -62,11 +68,6 @@ module.exports = {
     ACCESS_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1102, message: "토큰 인증에 실패했습니다"},
     ACCESS_TOKEN_EXPIRED: {isSuccess: false, code: 1103, message: "토큰이 만료됐습니다"},
 
-    REFRESH_TOKEN_EMPTY: {isSuccess: false, code: 1111, message: "리프레시 토큰이 없습니다"},
-    REFRESH_TOKEN_EXPIRED: {isSuccess: false, code: 1112, message: "리프레시 토큰이 만료됐습니다"},
-    REFRESH_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1113, message: "리프레시 토큰 복호화를 실패했습니다"},
-    REFRESH_TOKEN_IP_NOT_MATCH: {isSuccess: false, code: 1114, message: "IP가 일치하지 않습니다. 로그인을 다시 해주세요"},
-    REFRESH_TOKEN_SESSION_DELETED: {isSuccess: false, code: 1115, message: "세션 정보가 삭제됐습니다. 로그인을 다시 해주세요"},
 
     
     
