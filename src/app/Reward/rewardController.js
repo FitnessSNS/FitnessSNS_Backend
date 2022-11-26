@@ -134,9 +134,26 @@ exports.postUserRunning = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningCheck = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const isRestart = req.query.isRestart;
     const {longitude, latitude} = req.body;
+    
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
     
     // 운동 재시작 여부 타입 확인
     if (isRestart !== true && isRestart !== false) {
@@ -144,10 +161,11 @@ exports.postUserRunningCheck = async function (req, res) {
     }
     
     // 경도와 위도 정보가 없을 경우
-    if (longitude === undefined || latitude === undefined) {
+    if (longitude === undefined || longitude === null || longitude === ''
+        || latitude === undefined || latitude === null || latitude === '') {
         return res.send(errResponse(baseResponse.RUNNING_CHECK_LOCATION_EMPTY));
     }
-    
+   
     // 경도와 위도가 소수점이 아닐 경우
     if (!coordinateCheck.test(longitude) || !coordinateCheck.test(latitude)) {
         return res.send(errResponse(baseResponse.RUNNING_CHECK_LOCATION_TYPE_WRONG));
@@ -155,11 +173,11 @@ exports.postUserRunningCheck = async function (req, res) {
     
     // 일시정지 후 재시작인 경우
     if (isRestart) {
-        const postUserRunningRestartResponse = await rewardService.restartUserRunning(provider, email, longitude, latitude);
+        const postUserRunningRestartResponse = await rewardService.restartUserRunning(userInfo[0], longitude, latitude);
         
         return res.send(postUserRunningRestartResponse);
     } else {
-        const postUserRunningCheckResponse = await rewardService.checkUserRunning(provider, email, longitude, latitude);
+        const postUserRunningCheckResponse = await rewardService.checkUserRunning(userInfo[0], longitude, latitude);
         
         return res.send(postUserRunningCheckResponse);
     }
