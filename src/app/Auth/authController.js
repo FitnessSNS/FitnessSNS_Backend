@@ -592,7 +592,7 @@ exports.getRefreshToken = async (req, res) => {
             try {
                 await tokenGenerator.refreshToken(req, res, user);
             } catch {
-                return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+                return res.send(errResponse(baseResponse.REFRESH_TOKEN_GENERATE_FAIL));
             }
             
             return res.send(response(baseResponse.SUCCESS, accessToken));
