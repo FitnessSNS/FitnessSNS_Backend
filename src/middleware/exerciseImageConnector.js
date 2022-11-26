@@ -11,28 +11,13 @@ const s3 = new aws.S3({
 
 const allowedExtensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif'];
 
-// 이메일 아이디 분리
-const getEmailId = (email) => {
-    let emailId = '';
-    
-    for (let i = 0; i < email.length; i++) {
-        if (email[i] === '@') {
-            break;
-        } else {
-            emailId += email[i];
-        }
-    }
-    
-    return emailId;
-}
-
 const uploadExerciseImage = multer({
     storage: multerS3({
         s3: s3,
         bucket: process.env.AWS_S3_BUCKET,
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: (req, file, callback) => {
-            const userId = getEmailId(req.verifiedToken.email);
+            const userId = req.verifiedToken.id;
             
             // 오늘 날짜 구하기
             const today = new Date();
@@ -78,8 +63,7 @@ const deleteExerciseImage = async function delete_file(fileName)  {
             }
         });
     } catch(error) {
-        console.log(error);
-        throw error;
+        customLogger.error(`deleteExerciseImage - AWS S3 error\n${error.message}`);
     }
 };
 
