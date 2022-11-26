@@ -80,7 +80,10 @@ module.exports = {
     // 3. Reward
     // -----------------
     // Running
-    RUNNING_CHOOSE_EXERCISE_TYPE_WRONG: {isSuccess: false, code: 1301, message: "운동 종류를 다시 확인해주세요"},
+    REWARD_USER_NOT_FOUND: {isSuccess: false, code: 1301, message: "사용자 정보를 찾을 수 없습니다"},
+    REWARD_USER_STATUS_WRONG: {isSuccess: false, code: 1302, message: "사용 중지된 계정입니다" },
+    RUNNING_CHOOSE_EXERCISE_TYPE_WRONG: {isSuccess: false, code: 1303, message: "운동 종류를 다시 확인해주세요"},
+    REWARD_EXERCISE_USER_GROUP_CHECK: {isSuccess: false, code: 1304, message: "그룹 운동을 선택할 수 없습니다" },
     
     RUNNING_START_LOCATION_EMPTY: {isSuccess: false, code: 1311, message: "위치 정보가 없습니다"},
     RUNNING_START_LOCATION_TYPE_WRONG: {isSuccess: false, code: 1312, message: "위치 정보를 다시 확인해주세요"},
@@ -100,45 +103,41 @@ module.exports = {
     RUNNING_PROOF_EXERCISE_ID_EMPTY: {isSuccess: false, code: 1352, message: "사용자 운동 기록 ID를 확인해주세요"},
     
     
+    
+    // ----------------
+    // Response
+    // ----------------
+    
     // ----------------
     // 3. Reward
     // ----------------
     // Reward
-    REWARD_USER_NOT_FOUND: {"isSuccess": false, code: 3001, message: "JWT 정보가 없습니다" },
+    REWARD_MENTION_NOT_FOUND: {"isSuccess": false, code: 3011, message: "오늘의 멘트를 찾을 수 없습니다" },
+    REWARD_SHOPPING_LIST_NOT_FOUND: {"isSuccess": false, code: 3012, message: "쇼핑 목록을 찾을 수 없습니다" },
+    REWARD_CHALLENGE_INFO_NOT_FOUND: {"isSuccess": false, code: 3013, message: "챌린지 목록을 찾을 수 없습니다" },
     
-    REWARD_USER_INFO_NOT_FOUND: {"isSuccess": false, code: 3011, message: "사용자 정보를 찾을 수 없습니다" },
-    REWARD_MENTION_NOT_FOUND: {"isSuccess": false, code: 3012, message: "오늘의 멘트를 찾을 수 없습니다" },
-    REWARD_SHOPPING_LIST_NOT_FOUND: {"isSuccess": false, code: 3013, message: "쇼핑 목록을 찾을 수 없습니다" },
-    REWARD_CHALLENGE_INFO_NOT_FOUND: {"isSuccess": false, code: 3014, message: "챌린지 목록을 찾을 수 없습니다" },
+    RUNNING_USER_EXERCISE_LOCATION_EXIST: {"isSuccess": false, code: 3031, message: "이미 시작한 운동이 있습니다" },
+    RUNNING_USER_EXERCISE_EXIST: {"isSuccess": false, code: 3032, message: "이미 시작한 운동 기록이 있습니다" },
+    RUNNING_USER_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3033, message: "운동 기록을 찾을 수 없습니다" },
     
-    REWARD_EXERCISE_USER_GROUP_CHECK: {"isSuccess": false, code: 3021, message: "그룹 운동을 선택할 수 없습니다" },
+    RUNNING_CHECK_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3041, message: "운동을 시작하지 않았습니다" },
+    RUNNING_CHECK_TIME_LESS_ZERO: {"isSuccess": false, code: 3042, message: "운동 시간 간격이 없습니다" },
+    RUNNING_CHECK_TIME_OUT: {"isSuccess": false, code: 3043, message: "운동 시간 초과 (3시간 이상)" },
+    RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3044, message: "운동 기록을 찾을 수 없습니다" },
     
-    RUNNING_USER_NOT_FOUND: {"isSuccess": false, code: 3031, message: "사용자 정보를 찾을 수 없습니다" },
-    RUNNING_USER_EXERCISE_LOCATION_EXIST: {"isSuccess": false, code: 3032, message: "이미 시작한 운동이 있습니다" },
-    RUNNING_USER_EXERCISE_EXIST: {"isSuccess": false, code: 3033, message: "이미 시작한 운동이 있습니다" },
+    RUNNING_STOP_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3051, message: "운동을 시작하지 않았습니다" },
+    RUNNING_STOP_TIME_LESS_ZERO: {"isSuccess": false, code: 3052, message: "운동 시간 간격이 없습니다" },
+    RUNNING_STOP_TIME_OUT: {"isSuccess": false, code: 3053, message: "운동 시간 초과 (3시간 이상)" },
+    RUNNING_STOP_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3054, message: "운동 기록을 찾을 수 없습니다" },
     
-    RUNNING_CHECK_USER_NOT_FOUND: {"isSuccess": false, code: 3041, message: "사용자 정보를 찾을 수 없습니다" },
-    RUNNING_CHECK_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3042, message: "운동을 시작하지 않았습니다" },
-    RUNNING_CHECK_TIME_LESS_ZERO: {"isSuccess": false, code: 3043, message: "운동 시간 간격이 없습니다" },
-    RUNNING_CHECK_TIME_OUT: {"isSuccess": false, code: 3044, message: "운동 시간 초과 (3시간 이상)" },
-    RUNNING_CHECK_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3045, message: "운동 기록을 찾을 수 없습니다" },
+    RUNNING_END_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3061, message: "운동을 시작하지 않았습니다" },
+    RUNNING_END_TIME_LESS_ZERO: {"isSuccess": false, code: 3062, message: "운동 시간 간격이 없습니다" },
+    RUNNING_END_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3063, message: "운동 기록을 찾을 수 없습니다" },
     
-    RUNNING_STOP_USER_NOT_FOUND: {"isSuccess": false, code: 3051, message: "사용자 정보를 찾을 수 없습니다" },
-    RUNNING_STOP_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3052, message: "운동을 시작하지 않았습니다" },
-    RUNNING_STOP_TIME_LESS_ZERO: {"isSuccess": false, code: 3053, message: "운동 시간 간격이 없습니다" },
-    RUNNING_STOP_TIME_OUT: {"isSuccess": false, code: 3054, message: "운동 시간 초과 (3시간 이상)" },
-    RUNNING_STOP_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3055, message: "운동 기록을 찾을 수 없습니다" },
+    RUNNING_PROOF_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3071, message: "운동 기록을 찾을 수 없습니다" },
+    RUNNING_PROOF_EXERCISE_NOT_END: {"isSuccess": false, code: 3072, message: "운동이 종료되지 않았습니다" },
     
-    RUNNING_END_USER_NOT_FOUND: {"isSuccess": false, code: 3061, message: "사용자 정보를 찾을 수 없습니다" },
-    RUNNING_END_PRIOR_LOCATION_NOT_FOUND: {"isSuccess": false, code: 3062, message: "운동을 시작하지 않았습니다" },
-    RUNNING_END_TIME_LESS_ZERO: {"isSuccess": false, code: 3063, message: "운동 시간 간격이 없습니다" },
-    RUNNING_END_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3064, message: "운동 기록을 찾을 수 없습니다" },
-    
-    RUNNING_PROOF_USER_NOT_FOUND: {"isSuccess": false, code: 3071, message: "사용자 정보를 찾을 수 없습니다" },
-    RUNNING_PROOF_EXERCISE_NOT_FOUND: {"isSuccess": false, code: 3072, message: "운동 기록을 찾을 수 없습니다" },
-    RUNNING_PROOF_EXERCISE_NOT_END: {"isSuccess": false, code: 3073, message: "운동이 종료되지 않았습니다" },
-    
-    CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "Challenge cannot found" },
+    CHALLENGE_NOT_FOUND: {"isSuccess": false, code: 3001, message: "챌린지를 찾을 수 없습니다" },
     
     
     //Connection, Transaction 등의 서버 오류
