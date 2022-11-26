@@ -15,9 +15,26 @@ const coordinateCheck = /^\d+\.\d+$/;
 exports.getRewardInfo = async function (req, res) {
     const userId = req.verifiedToken.id;
     
+    // 계정 상태 확인
+    let userInfo;
     try {
-        const getRewardInfoResult = await rewardProvider.retrieveRewardMain(userId);
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
     
+    try {
+        const getRewardInfoResult = await rewardProvider.retrieveRewardMain(userInfo[0]);
+        
         return res.send(getRewardInfoResult);
     } catch {
         return res.send(errResponse(baseResponse.DB_ERROR));
@@ -32,14 +49,42 @@ exports.checkUserExerciseGroup = async function (req, res) {
     const userId = req.verifiedToken.id;
     const {type} = req.query;
     
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
     // 운동 종류 유효성 검사
     if (type !== 'P' && type !== 'G') {
         return res.send(errResponse(baseResponse.RUNNING_CHOOSE_EXERCISE_TYPE_WRONG));
     }
     
-    const getUserExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(userId, type);
+    // 사용자 그룹 확인
+    let userExerciseGroupResult;
+    try {
+        userExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(userId);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
     
-    return res.send(getUserExerciseGroupResult);
+    // 그룹 운동 가능 여부
+    if (userExerciseGroupResult.length < 1 && type === 'G') {
+        return res.send(errResponse(baseResponse.REWARD_EXERCISE_USER_GROUP_CHECK));
+    } else {
+        return res.send(response(baseResponse.SUCCESS));
+    }
 };
 
 /** 운동 시작 API
@@ -47,11 +92,29 @@ exports.checkUserExerciseGroup = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunning = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const {longitude, latitude} = req.body;
     
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
     // 경도와 위도 정보가 없을 경우
-    if (longitude === undefined || latitude === undefined) {
+    if (longitude === undefined || longitude === null || longitude === ''
+        || latitude === undefined || latitude === null || latitude === '') {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_EMPTY));
     }
     
@@ -60,7 +123,7 @@ exports.postUserRunning = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_START_LOCATION_TYPE_WRONG));
     }
     
-    const postUserRunningResponse = await rewardService.startUserRunning(provider, email, longitude, latitude);
+    const postUserRunningResponse = await rewardService.startUserRunning(userId, longitude, latitude);
     
     return res.send(postUserRunningResponse);
 };
@@ -93,11 +156,11 @@ exports.postUserRunningCheck = async function (req, res) {
     // 일시정지 후 재시작인 경우
     if (isRestart) {
         const postUserRunningRestartResponse = await rewardService.restartUserRunning(provider, email, longitude, latitude);
-    
+        
         return res.send(postUserRunningRestartResponse);
     } else {
         const postUserRunningCheckResponse = await rewardService.checkUserRunning(provider, email, longitude, latitude);
-    
+        
         return res.send(postUserRunningCheckResponse);
     }
 };
@@ -184,8 +247,6 @@ exports.postRunningImage = async function (req, res) {
 };
 
 
-
-
 /** 챌린지 확인 API
  * [GET] /app/rewards/challenge
  * body :
@@ -207,7 +268,7 @@ exports.getChallenge = async function (req, res) {
  * body : title, content, condition, end_date
  */
 exports.postChallenge = async function (req, res) {
-    const { title, content, condition, end_date } = req.body;
+    const {title, content, condition, end_date} = req.body;
     
     const postChallengeResult = await rewardService.createChallenge(title, content, condition, end_date)
     

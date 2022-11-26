@@ -60,39 +60,15 @@ exports.retrieveChallenge = async () => {
 };
 
 // 사용자 리워드 정보 불러오기
-exports.retrieveRewardMain = async (userId) => {
-    // 사용자 정보 불러오기
-    let user;
-    try {
-        user = await prisma.$queryRaw(
-            Prisma.sql`
-                SELECT id                     AS userId,
-                       provider,
-                       email,
-                       CAST(nickname AS CHAR) AS nickname,
-                       status
-                FROM User
-                WHERE id = ${userId};
-            `
-        );
-        
-        // 사용자 정보가 없을 경우 에러 발생
-        if (user.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_INFO_NOT_FOUND);
-        }
-    } catch (error) {
-        customLogger.error(`retrieveUserInfo - user info database error\n${error.message}`);
-        throw error;
-    }
-    
+exports.retrieveRewardMain = async (user) => {
     // 사용자 리워드 정보
     let userReward;
     try {
         userReward = await prisma.Reward.findMany({
             where : {
                 User: {
-                    provider: user[0].provider,
-                    email   : user[0].email
+                    provider: user.provider,
+                    email   : user.email
                 }
             },
             select: {
@@ -153,8 +129,8 @@ exports.retrieveRewardMain = async (userId) => {
         userExercise = await prisma.Exercise.findMany({
             where : {
                 User      : {
-                    provider: user[0].provider,
-                    email   : user[0].email
+                    provider: user.provider,
+                    email   : user.email
                 },
                 created_at: {
                     gt: today,
@@ -219,8 +195,8 @@ exports.retrieveRewardMain = async (userId) => {
         userChallenge = await prisma.UserChallenge.findMany({
             where : {
                 User  : {
-                    provider: user[0].provider,
-                    email   : user[0].email
+                    provider: user.provider,
+                    email   : user.email
                 },
                 status: 'RUN'
             },
@@ -303,10 +279,10 @@ exports.retrieveRewardMain = async (userId) => {
     
     // 응답 객체 생성
     const rewardMainResult = {
-        userId    : user[0].userId,
-        userStatus: user[0].status,
+        userId    : user.userId,
+        userStatus: user.status,
         point     : totalReward,
-        nickname  : user[0].nickname,
+        nickname  : user.nickname,
         ment      : todayMention[0].content,
         activity  : {
             time_stack    : timeResult,
@@ -321,31 +297,28 @@ exports.retrieveRewardMain = async (userId) => {
 };
 
 // 그룹 운동 확인
-exports.retrieveUserExerciseGroup = async (userId, type) => {
-    // 사용자 그룹 참가 확인
-    const userGroup = await prisma.UserGroup.findMany({
-        where : {
-            User  : {
-                id: userId
+exports.retrieveUserExerciseGroup = async (userId) => {
+    try {
+        return await prisma.UserGroup.findMany({
+            where : {
+                User  : {
+                    id: userId
+                },
+                status: 'RUN'
             },
-            status: 'RUN'
-        },
-        select: {
-            id      : true,
-            group_id: true,
-        }
-    });
-    
-    // 그룹 운동 가능 여부
-    if (userGroup.length < 1 && type === 'G') {
-        return errResponse(baseResponse.REWARD_EXERCISE_USER_GROUP_CHECK);
-    } else {
-        return response(baseResponse.SUCCESS);
+            select: {
+                id      : true,
+                group_id: true,
+            }
+        });
+    } catch (error) {
+        customLogger.error(`retrieveUserExerciseGroup - database error\n${error.message}`);
+        throw error;
     }
 };
 
 // 사용자 정보 조회
-exports.retrieveUserInfo = async (provider, email) => {
+exports.retrieveUserInfo = async (userId) => {
     try {
         return await prisma.$queryRaw(
             Prisma.sql`
@@ -355,12 +328,11 @@ exports.retrieveUserInfo = async (provider, email) => {
                        CAST(nickname AS CHAR) AS nickname,
                        status
                 FROM User
-                WHERE provider = ${provider}
-                  AND email = ${email};
+                WHERE id = ${userId};
             `
         );
     } catch (error) {
-        customLogger.error(`retrieveUserInfo - database error`);
+        customLogger.error(`retrieveUserInfo - database error\n$${error.message}`);
         throw error;
     }
 };
@@ -375,7 +347,7 @@ exports.retrieveUserExerciseLocation = async (userId) => {
             }
         });
     } catch (error) {
-        logger.error(`retrieveUserExerciseLocation - database error`);
+        customLogger.error(`retrieveUserExerciseLocation - database error`);
         throw error;
     }
 };
