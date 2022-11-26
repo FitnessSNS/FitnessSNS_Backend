@@ -9,7 +9,6 @@ const specialCharacter = /[^\w\sㄱ-힣]|[\_]/g;
 // 경도, 위도 검사
 const coordinateCheck = /^\d+\.\d+$/;
 
-// TODO: 테스트
 /** 리워드 매인 API
  * [GET] /rewards/users
  */
@@ -30,7 +29,7 @@ exports.getRewardInfo = async function (req, res) {
  * query : type
  */
 exports.checkUserExerciseGroup = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const {type} = req.query;
     
     // 운동 종류 유효성 검사
@@ -38,7 +37,7 @@ exports.checkUserExerciseGroup = async function (req, res) {
         return res.send(errResponse(baseResponse.RUNNING_CHOOSE_EXERCISE_TYPE_WRONG));
     }
     
-    const getUserExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(provider, email, type);
+    const getUserExerciseGroupResult = await rewardProvider.retrieveUserExerciseGroup(userId, type);
     
     return res.send(getUserExerciseGroupResult);
 };

@@ -321,13 +321,12 @@ exports.retrieveRewardMain = async (userId) => {
 };
 
 // 그룹 운동 확인
-exports.retrieveUserExerciseGroup = async (provider, email, type) => {
+exports.retrieveUserExerciseGroup = async (userId, type) => {
     // 사용자 그룹 참가 확인
     const userGroup = await prisma.UserGroup.findMany({
         where : {
             User  : {
-                provider: provider,
-                email   : email
+                id: userId
             },
             status: 'RUN'
         },
