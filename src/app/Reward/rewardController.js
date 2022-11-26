@@ -188,11 +188,29 @@ exports.postUserRunningCheck = async function (req, res) {
  * body : longitude, latitude
  */
 exports.postUserRunningStop = async function (req, res) {
-    const {provider, email} = req.verifiedToken;
+    const userId = req.verifiedToken.id;
     const {longitude, latitude} = req.body;
     
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+   
     // 경도와 위도 정보가 없을 경우
-    if (longitude === undefined || latitude === undefined) {
+    if (longitude === undefined || longitude === null || longitude === ''
+        || latitude === undefined || latitude === null || latitude === '') {
         return res.send(errResponse(baseResponse.RUNNING_STOP_LOCATION_EMPTY));
     }
     
@@ -202,7 +220,7 @@ exports.postUserRunningStop = async function (req, res) {
     }
     
     // 현재 위치까지 운동 기록 저장
-    const postUserRunningStopResponse = await rewardService.pauseUserRunning(provider, email, longitude, latitude);
+    const postUserRunningStopResponse = await rewardService.pauseUserRunning(userInfo[0], longitude, latitude);
     
     return res.send(postUserRunningStopResponse);
 };
