@@ -595,7 +595,7 @@ exports.getRefreshToken = async (req, res) => {
                 return res.send(errResponse(baseResponse.REFRESH_TOKEN_GENERATE_FAIL));
             }
             
-            return res.send(response(baseResponse.SUCCESS, accessToken));
+            return res.send(response(baseResponse.SUCCESS, { accessToken }));
         }
         // IP가 일치하지 않을 경우
         else {
