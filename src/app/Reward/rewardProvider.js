@@ -2,7 +2,6 @@ const {PrismaClient, Prisma} = require('@prisma/client');
 const prisma = new PrismaClient();
 const baseResponse = require('../../../config/baseResponseStatus');
 const {response, errResponse} = require("../../../config/response");
-const {logger} = require('../../../config/winston');
 
 // Date to String 함수
 const getTodayTime = function (todayTime) {
@@ -380,7 +379,7 @@ exports.retrieveUserExerciseById = async (exerciseId) => {
             }
         });
     } catch (error) {
-        logger.error(`retrieveUserExerciseById - database error`);
+        customLogger.error(`retrieveUserExerciseById - database error\n${error.message}`);
         throw error;
     }
 };

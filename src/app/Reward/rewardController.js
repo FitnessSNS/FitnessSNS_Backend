@@ -280,8 +280,24 @@ exports.postUserRunningEnd = async function (req, res) {
  */
 exports.postRunningImage = async function (req, res) {
     const userId = req.verifiedToken.id;
-    let {exercise_id} = req.body
-    exercise_id = Number(exercise_id);
+    const exercise_id = Number(req.body.exercise_id);
+    
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await rewardProvider.retrieveUserInfo(userId);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+        }
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
     
     // 운동 사진 불러오기
     const imageLink = req.file.location;
@@ -290,12 +306,12 @@ exports.postRunningImage = async function (req, res) {
     }
     
     // 운동 ID 유효성 검사
-    if (exercise_id === undefined || exercise_id === null || exercise_id === '') {
+    if (isNaN(exercise_id)) {
         return res.send(errResponse(baseResponse.RUNNING_PROOF_EXERCISE_ID_EMPTY));
     }
     
     // 운동 기록에 사진 저장
-    const postRunningImageResponse = await rewardService.createRunningImage(provider, email, exercise_id, imageLink);
+    const postRunningImageResponse = await rewardService.createRunningImage(userInfo[0], exercise_id, imageLink);
     
     return res.send(postRunningImageResponse);
 };

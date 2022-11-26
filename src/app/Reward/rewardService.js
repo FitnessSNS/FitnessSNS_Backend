@@ -363,7 +363,7 @@ exports.restartUserRunning = async (user, longitude, latitude) => {
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
-   
+    
     // 조회된 운동 기록이 없을 경우
     if (getUserExercise.length < 1) {
         return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
@@ -704,60 +704,59 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
 };
 
 // 운동 사진 등록
-exports.createRunningImage = async (provider, email, exerciseId, imageLink) => {
+exports.createRunningImage = async (user, exerciseId, imageLink) => {
+    // 운동 기록 조회
+    let userExercise;
     try {
-        // 사용자 정보 불러오기
-        const user = await rewardProvider.retrieveUserInfo(provider, email);
-        
-        // 사용자 정보가 없을 경우 에러 발생
-        if (user.length < 1) {
-            return errResponse(baseResponse.RUNNING_PROOF_USER_NOT_FOUND);
-        }
-        
-        // 운동 기록 조회
-        const userExercise = await rewardProvider.retrieveUserExerciseById(exerciseId);
-        if (userExercise === null) {
-            return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_FOUND);
-        }
-        
-        // 운동이 종료되지 않을 경우
-        if (userExercise.status === 'RUN') {
-            return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_END);
-        }
-        
+        userExercise = await rewardProvider.retrieveUserExerciseById(exerciseId);
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 조회된 운동 기록이 없을 경우
+    if (userExercise === undefined || userExercise === null) {
+        return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_FOUND);
+    }
+    
+    // 운동이 종료되지 않을 경우
+    if (userExercise.status === 'RUN') {
+        return errResponse(baseResponse.RUNNING_PROOF_EXERCISE_NOT_END);
+    }
+    
+    try {
         // 운동 인증 사진 추가
         await prisma.Exercise.update({
-            where  : {
+            where: {
                 id: exerciseId,
-            }, data: {
+            },
+            data : {
                 image: imageLink
             }
         });
-        
-        // 운동 기록 재조회
-        const getUserExerciseById = await rewardProvider.retrieveUserExerciseById(exerciseId);
-        const exerciseTime = getExerciseTime(getUserExerciseById.time.getTime());
-        
-        // 응답 객체 생성
-        const result = {
-            exercise_id   : getUserExerciseById.id,
-            user_id       : user[0].userId,
-            nickname      : user[0].nickname,
-            challenge_goal: 5000,
-            time          : exerciseTime,
-            distance      : getUserExerciseById.distance,
-            calorie       : Math.floor(getUserExerciseById.calorie),
-            image         : getUserExerciseById.image,
-            forceEnd      : null
-        }
-        
-        return response(baseResponse.SUCCESS, result);
     } catch (error) {
         // 등록된 사진 삭제
-        const imageName = imageLink.slice(61);
+        const imageName = imageLink.slice(process.env.RUNNING_IMAGE);
         await deleteExerciseImage(imageName);
         
-        customLogger.error(`createRunningImage - database error\n: ${error.message}`);
+        customLogger.error(`createRunningImage - database error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);
     }
+    
+    // 운동 기록 재조회
+    const exerciseTime = getExerciseTime(userExercise.time.getTime());
+    
+    // 응답 객체 생성
+    const result = {
+        exercise_id   : userExercise.id,
+        user_id       : user.userId,
+        nickname      : user.nickname,
+        challenge_goal: 5000,
+        time          : exerciseTime,
+        distance      : userExercise.distance,
+        calorie       : Math.floor(userExercise.calorie),
+        image         : imageLink,
+        forceEnd      : userExercise.forceEnd
+    }
+    
+    return response(baseResponse.SUCCESS, result);
 };
