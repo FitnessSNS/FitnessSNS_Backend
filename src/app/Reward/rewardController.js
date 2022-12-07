@@ -42,7 +42,7 @@ exports.getRewardInfo = async function (req, res) {
 };
 
 /** 운동 선택 API
- * [GET] /app/rewards/running/exercise
+ * [GET] /rewards/running/exercise
  * query : type
  */
 exports.checkUserExerciseGroup = async function (req, res) {
@@ -88,7 +88,7 @@ exports.checkUserExerciseGroup = async function (req, res) {
 };
 
 /** 운동 시작 API
- * [POST] /app/rewards/running/start
+ * [POST] /rewards/running/start
  * body : longitude, latitude
  */
 exports.postUserRunning = async function (req, res) {
@@ -129,7 +129,7 @@ exports.postUserRunning = async function (req, res) {
 };
 
 /** 운동 진행 API
- * [POST] /app/rewards/running/check
+ * [POST] /rewards/running/check
  * query : isRestart
  * body : longitude, latitude
  */
@@ -184,7 +184,7 @@ exports.postUserRunningCheck = async function (req, res) {
 };
 
 /** 운동 일시정지 API
- * [POST] /app/rewards/running/stop
+ * [POST] /rewards/running/stop
  * body : longitude, latitude
  */
 exports.postUserRunningStop = async function (req, res) {
@@ -226,7 +226,7 @@ exports.postUserRunningStop = async function (req, res) {
 };
 
 /** 운동 종료 API
- * [POST] /app/rewards/running/end
+ * [POST] /rewards/running/end
  * query : forceEnd
  * body : longitude, latitude
  */
@@ -275,7 +275,7 @@ exports.postUserRunningEnd = async function (req, res) {
 };
 
 /** 운동 사진 인증 API
- * [POST] /app/rewards/running/imageProof
+ * [POST] /rewards/running/imageProof
  * body : exercise_id, image
  */
 exports.postRunningImage = async function (req, res) {
