@@ -5,6 +5,7 @@ const methodOverride = require('method-override');
 const cors = require('cors');
 const boolParser = require(`express-query-boolean`);
 const {morganLog} = require('./config/morganMiddleware');
+const {swaggerUI, specs} = require('./config/swagger');
 
 // 로깅 함수 전역변수 선언
 global.customLogger = require('./config/winston').logger;
@@ -65,6 +66,8 @@ app.use(boolParser());
 app.use(passport.initialize());
 // passport local initializing
 localInitialize();
+
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(specs, {explorer: true}));
 
 // ------- Routing -------
 require('./src/app/Auth/authRoute')(app);
