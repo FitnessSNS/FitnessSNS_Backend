@@ -285,14 +285,15 @@ exports.addUserInfo = async (provider, email, nickname) => {
 };
 
 // DELETE
-// 세션 정보 삭제
-exports.deleteSession = async (refresh_token) => {
+// 리프레시 토큰 삭제
+exports.deleteRefreshToken = async (userId) => {
     try {
+        // 로그아웃 리프레시 토큰 삭제
         await prisma.Session.deleteMany({
-            where: {refresh_token: refresh_token}
+            where: {user_id: userId}
         });
     } catch (error) {
-        customLogger.error(`deleteSession - database error\n${error.message}`);
+        customLogger.error(`deleteRefreshToken - database error\n${error.message}`);
     }
 };
 

@@ -85,7 +85,7 @@ exports.emailVerifyStart = async (req, res) => {
     const MAX_VERIFICATION_TIME = 10;
     
     // 이메일 유효성 검사
-    if (email === undefined || email === null || email === '') {
+    if (!email) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
     }
     
@@ -146,7 +146,7 @@ exports.emailVerifyEnd = async (req, res) => {
     const {email, code} = req.body;
     
     // 이메일 유효성 검사
-    if (email === undefined || email === null || email === '') {
+    if (!email) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
     }
     
@@ -156,7 +156,7 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 인증코드 유효성 검사
-    if (code === undefined || code === null || code === '') {
+    if (!code) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_EMPTY));
     }
     
@@ -220,7 +220,7 @@ exports.nicknameCheck = async (req, res) => {
     const {nickname} = req.body;
     
     // 닉네임 확인
-    if (nickname === undefined || nickname === null || nickname === '') {
+    if (!nickname) {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
     }
     
@@ -281,7 +281,7 @@ exports.signUp = async (req, res) => {
     }
     
     // 닉네임 확인
-    if (nickname === undefined || nickname === null || nickname === '') {
+    if (!nickname) {
         return res.send(errResponse(baseResponse.SIGNUP_NICKNAME_EMPTY));
     }
     
@@ -309,7 +309,7 @@ exports.signUp = async (req, res) => {
     }
     
     // 비밀번호 확인
-    if (password === undefined || password === null || password === '') {
+    if (!password) {
         return res.send(errResponse(baseResponse.SIGNUP_PASSWORD_EMPTY));
     }
     
@@ -336,7 +336,7 @@ exports.authURI = async (req, res) => {
     const provider = req.query.provider;
     
     // SNS 플랫폼 유효성 검사
-    if (provider === undefined || provider !== 'kakao') {
+    if (!provider || provider !== 'kakao') {
         return res.send(errResponse(baseResponse.OAUTH_AUTHORIZATION_PROVIDER_WRONG));
     }
     
@@ -413,7 +413,7 @@ exports.kakaoSignIn = async (req, res) => {
     }
     
     // 액세스 토큰을 받을 수 없는 경우
-    if (getKakaoTokenResult.data === undefined || getKakaoTokenResult.data === null) {
+    if (!getKakaoTokenResult.data) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_AUTHORIZATION_CODE_WRONG));
     }
     
@@ -427,7 +427,7 @@ exports.kakaoSignIn = async (req, res) => {
     }
     
     // 사용자 정보를 받을 수 없는 경우
-    if (getKakaoUserInfoResult.data.kakao_account.email === undefined || getKakaoUserInfoResult.data.kakao_account.email === null) {
+    if (!getKakaoUserInfoResult.data.kakao_account.email) {
         return res.send(errResponse(baseResponse.SIGNIN_KAKAO_ACCESS_TOKEN_WRONG));
     }
     
@@ -503,7 +503,7 @@ exports.addInfo = async (req, res) => {
     }
     
     // 닉네임 확인
-    if (nickname === undefined || nickname === null || nickname === '') {
+    if (!nickname) {
         return res.send(errResponse(baseResponse.OAUTH_ADDINFO_NICKNAME_EMPTY));
     }
     
@@ -539,7 +539,7 @@ exports.addInfo = async (req, res) => {
 exports.getRefreshToken = async (req, res) => {
     // 토큰 검사
     const token = await refreshTokenExtractor(req);
-    if (token === null || token === undefined) {
+    if (!token) {
         return res.send(errResponse(baseResponse.REFRESH_TOKEN_EMPTY));
     }
     
@@ -607,22 +607,16 @@ exports.getRefreshToken = async (req, res) => {
     }
 };
 
-
-exports.logout = async (req, res, next) => {
-    try {
-        let token = await refreshTokenExtractor(req);
-        if (token) {
-            await authService.deleteSession(token);
-        }
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token');
-        
-        res.send(response(baseResponse.SUCCESS));
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
-    }
+/** 로그아웃 API
+ * [GET] /auth/logout
+ */
+exports.logout = async (req, res) => {
+    // 리프레시 토큰 삭제
+    await authService.deleteRefreshToken(req.verifiedToken.id);
     
+    // 리프레시 토큰 쿠키 삭제
+    res.clearCookie('refreshToken');
+    return res.send(response(baseResponse.SUCCESS));
 }
 
 exports.signout = async (req, res, next) => {
