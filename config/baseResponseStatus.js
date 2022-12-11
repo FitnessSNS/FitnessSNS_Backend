@@ -10,6 +10,7 @@ module.exports = {
     SIGNUP_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1052, message: "회원가입 토큰 에러"},
     SIGNIN_TOKEN_EMPTY: {isSuccess: false, code: 1053, message: "로그인 토큰이 없습니다"},
     SIGNIN_TOKEN_VERIFICATION_FAIL: {isSuccess: false, code: 1054, message: "로그인 토큰 에러"},
+    SIGNIN_TOKEN_ALREADY_LOGOUT: {isSuccess: false, code: 1055, message: "로그아웃 상태"},
     
     // 리프레시 토큰
     REFRESH_TOKEN_EMPTY: {isSuccess: false, code: 1061, message: "리프레시 토큰이 없습니다"},
