@@ -229,17 +229,12 @@ module.exports = (app) => {
      *           description: 사용자 액세스 토큰
      *           required: true
      *           type : string
-     *         - name: refreshToken
-     *           in: cookie
-     *           description: 재발급 토큰
-     *           required: true
-     *           type: string
      *       responses:
      *         '200':
      *           description: OK
      */
     app.get('/auth/logout', authenticate, authController.logout);
-
+    
     // 회원탈퇴
     app.post('/auth/signout', authenticate, authController.signout);
 }
