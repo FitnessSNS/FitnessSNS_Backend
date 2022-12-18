@@ -21,7 +21,7 @@ const options = {
         ],
         basePath: '/'
     },
-    apis             : ['./src/app/Auth/authRoute.js', './src/app/Reward/rewardRoute.js']
+    apis             : ['./src/app/Auth/authRoute.js', './src/app/Reward/rewardRoute.js', './src/app/User/userRoute.js']
 };
 
 const specs = swaggerDoc(options);
