@@ -73,6 +73,7 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(specs, {explorer: true}));
 // ------- Routing -------
 require('./src/app/Auth/authRoute')(app);
 require('./src/app/Reward/rewardRoute')(app);
+require('./src/app/User/userRoute')(app);
 
 // 서버 시작
 app.listen(port, '0.0.0.0');
