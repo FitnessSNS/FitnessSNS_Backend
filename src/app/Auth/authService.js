@@ -175,6 +175,63 @@ exports.createOAuthUser = async (provider, email) => {
     }
 };
 
+// 비밀번호 찾기 이메일 인증정보 생성
+exports.createUserInfoEmailVerification = async (email, code) => {
+    // DB에 인증정보 저장
+    try {
+        await prisma.EmailVerification.create({
+            data: {
+                email: email,
+                code : code
+            }
+        });
+    } catch (error) {
+        customLogger.error(`createUserInfoEmailVerification - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 메일 내용
+    const mailContent = `
+            <h2>Running High</h2>
+            <h3>비밀번호 찾기 이메일 확인</h3>
+            <p>다음 코드를 사용해서 비밀번호 찾기 코드를 인증하세요</p>
+            <p>${code}</p>
+        `;
+    
+    // 메일 옵션
+    const mailOption = {
+        from   : process.env.MAIL_USER,
+        to     : `${email}`,
+        subject: "비밀번호 찾기 인증코드",
+        html   : `${mailContent}`
+    };
+    
+    // 메일 인증 송신
+    await transporter.sendMail(mailOption, async (error, info) => {
+        if (error) {
+            customLogger.warn(`createUserInfoEmailVerification - nodeMailer error\n${error.message}`);
+            return errResponse(baseResponse.MAIL_TRANSPORTER_ERROR);
+        } else {
+            customLogger.info(`Email : ${email} - API Server sent verification code`);
+        }
+    });
+    
+    // 이메일 인증정보 응답 객체 생성
+    try {
+        const emailVerificationFinalResult = await authProvider.getEmailVerification(email);
+        
+        const finalResponse = {
+            userEmail        : emailVerificationFinalResult[0].email,
+            verificationCount: emailVerificationFinalResult[0].verification_count,
+            isVerified       : emailVerificationFinalResult[0].is_verified
+        };
+        
+        return response(baseResponse.SUCCESS, finalResponse);
+    } catch {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};
+
 
 // UPDATE
 // 세션 정보 수정
@@ -283,6 +340,129 @@ exports.addUserInfo = async (provider, email, nickname) => {
         return errResponse(baseResponse.DB_ERROR);
     }
 };
+
+// 비밀번호 찾기 이메일 인증 정보 수정
+exports.updateUserInfoEmailVerification = async (email, code, verificationCount) => {
+    try {
+        // DB에 인증정보 수정
+        await prisma.EmailVerification.update({
+            where: {
+                email: email
+            },
+            data : {
+                code              : code,
+                verification_count: verificationCount
+            }
+        });
+    } catch (error) {
+        customLogger.error(`updateUserInfoEmailVerification - database error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 메일 내용
+    const mailContent = `
+            <h2>Running High</h2>
+            <h3>비밀번호 찾기 이메일 확인</h3>
+            <p>다음 코드를 사용해서 비밀번호 찾기 코드를 인증하세요</p>
+            <p>${code}</p>
+        `;
+    
+    // 메일 옵션
+    const mailOption = {
+        from   : process.env.MAIL_USER,
+        to     : `${email}`,
+        subject: "비밀번호 찾기 인증코드",
+        html   : `${mailContent}`
+    };
+    
+    // 메일 인증 송신
+    await transporter.sendMail(mailOption, async (error, info) => {
+        if (error) {
+            customLogger.warn(`updateUserInfoEmailVerification - nodeMailer error\n${error.message}`);
+            return errResponse(baseResponse.MAIL_TRANSPORTER_ERROR);
+        } else {
+            customLogger.info(`Email : ${email} - API Server sent verification code`);
+        }
+    });
+    
+    // 이메일 인증정보 응답 객체 생성
+    try {
+        const emailVerificationFinalResult = await authProvider.getEmailVerification(email);
+        
+        const finalResponse = {
+            userEmail        : emailVerificationFinalResult[0].email,
+            verificationCount: emailVerificationFinalResult[0].verification_count,
+            isVerified       : emailVerificationFinalResult[0].is_verified
+        };
+        
+        return response(baseResponse.SUCCESS, finalResponse);
+    } catch (error) {
+        return errResponse(baseResponse.DB_ERROR);
+    }
+};
+
+// 임시 비밀번호 변경
+exports.updateUserInfoPassword = async (email, password) => {
+    // salt 생성
+    const createSalt = await randomBytesPromisified(64);
+    const salt = createSalt.toString('base64');
+    
+    // 해시 비밀번호 생성
+    const createHashedPassword = await pbkdf2Promisified(password, salt, 17450, 64, 'sha512');
+    const hashedPassword = createHashedPassword.toString('base64');
+    
+    try {
+        // 로컬계정 비밀번호 수정
+        const updateUserPassword = prisma.User.updateMany({
+            data : {
+                password: hashedPassword,
+                salt    : salt,
+            },
+            where: {
+                provider: 'local',
+                email   : email
+            }
+        });
+        
+        // 이메일 인증정보 삭제
+        const deleteEmailVerification = prisma.EmailVerification.deleteMany({
+            where: {email: email}
+        });
+        
+        // 트랜잭션 처리
+        await prisma.$transaction([updateUserPassword, deleteEmailVerification]);
+    } catch (error) {
+        customLogger.error(`updateUserInfoPassword - transaction error\n${error.message}`);
+        return errResponse(baseResponse.DB_ERROR);
+    }
+    
+    // 메일 내용
+    const mailContent = `
+            <h2>Running High</h2>
+            <h3>임시 비밀번호</h3>
+            <p>아래 비밀번호로 로그인 후 비밀번호를 변경해주세요!</p>
+            <p>${password}</p>
+        `;
+    
+    // 메일 옵션
+    const mailOption = {
+        from   : process.env.MAIL_USER,
+        to     : `${email}`,
+        subject: "임시 비밀번호",
+        html   : `${mailContent}`
+    };
+    
+    // 메일 인증 송신
+    await transporter.sendMail(mailOption, async (error, info) => {
+        if (error) {
+            customLogger.warn(`updateUserInfoPassword - nodeMailer error\n${error.message}`);
+            return errResponse(baseResponse.MAIL_TRANSPORTER_ERROR);
+        } else {
+            customLogger.info(`Email : ${email} - API Server sent verification code`);
+        }
+    });
+};
+
 
 // DELETE
 // 리프레시 토큰 삭제

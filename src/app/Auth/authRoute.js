@@ -235,6 +235,62 @@ module.exports = (app) => {
      */
     app.get('/auth/logout', authenticate, authController.logout);
     
+    /**
+     * @swagger
+     * paths :
+     *   /auth/userInfo/emailVerification:
+     *     post:
+     *       summary: 비밀번호 찾기 이메일 인증
+     *       tags:
+     *         - auth
+     *       requestBody:
+     *         content:
+     *           'application/json':
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 email:
+     *                   description: 인증코드 받을 이메일 주소
+     *                   type: string
+     *               example:
+     *                 email: 'bbaekddo100@naver.com'
+     *       responses:
+     *         '200':
+     *           description: OK
+     */
+    // 비밀번호 찾기 이메일 인증
+    app.post('/auth/userInfo/emailVerification', authController.userInfoEmailVerifyStart);
+    
+    /**
+     * @swagger
+     * paths :
+     *   /auth/userInfo/emailVerification/code:
+     *     post:
+     *       summary: 비밀번호 찾기 이메일 인증 완료
+     *       tags:
+     *         - auth
+     *       requestBody:
+     *         content:
+     *           'application/json':
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 email:
+     *                   description: 인증코드 받은 이메일 주소
+     *                   type: string
+     *                 code:
+     *                   description: 이메일 인증코드
+     *                   type: string
+     *               example:
+     *                 email: 'bbaekddo100@naver.com'
+     *                 code: code
+     *       responses:
+     *         '200':
+     *           description: OK
+     */
+    // 비밀번호 찾기 이메일 인증 완료
+    app.post('/auth/userInfo/emailVerification/code', authController.userInfoEmailVerifyEnd)
+    
     // 회원탈퇴
-    app.post('/auth/signout', authenticate, authController.signout);
+    // app.post('/auth/signout', authenticate, authController.signout);
 }

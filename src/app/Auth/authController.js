@@ -477,7 +477,7 @@ exports.kakaoSignIn = async (req, res) => {
     try {
         await tokenGenerator.refreshToken(req, res, getUserInfo[0]);
     } catch {
-        return res.send(errResponse(baseResponse.SIGNIN_REFRESH_TOKEN_GENERATE_FAIL));
+        return res.send(errResponse(baseResponse.REFRESH_TOKEN_GENERATE_FAIL));
     }
     
     return res.send(response(baseResponse.SUCCESS, getUserInfo[0]));
@@ -595,7 +595,7 @@ exports.getRefreshToken = async (req, res) => {
                 return res.send(errResponse(baseResponse.REFRESH_TOKEN_GENERATE_FAIL));
             }
             
-            return res.send(response(baseResponse.SUCCESS, { accessToken }));
+            return res.send(response(baseResponse.SUCCESS, {accessToken}));
         }
         // IP가 일치하지 않을 경우
         else {
@@ -619,43 +619,135 @@ exports.logout = async (req, res) => {
     return res.send(response(baseResponse.SUCCESS));
 }
 
-exports.signout = async (req, res, next) => {
-    try {
-        let token = accessTokenExtractor(req);
-        if (token === null || token === undefined) {
-            res.send(errResponse(baseResponse.ACCESS_TOKEN_EMPTY));
-            return;
-        }
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_KEY);
-        } catch (e) {
-            if (e.name == "JsonWebTokenError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_VERIFICATION_FAIL));
-                return;
-            }
-            if (e.name == "TokenExpiredError") {
-                res.send(errResponse(baseResponse.ACCESS_TOKEN_EXPIRED));
-                return;
-            }
-            next({status: 500, message: 'internal server error'});
-            return;
-        }
-        
-        await userService.chageStatus({status: "DELETED", provider: decoded.provider, email: decoded.email});
-        
-        let refresh_token = await refreshTokenExtractor(req);
-        if (refresh_token) {
-            await authService.deleteSession(token);
-        }
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token');
-        
-        res.send(response(baseResponse.SUCCESS));
-        
-    } catch (e) {
-        console.error(e);
-        next({status: 500, message: 'internal server error'});
+/** 비밀번호 찾기 이메일 인증 시작 API
+ * [POST] /auth/userInfo/emailVerification
+ * body : email
+ */
+exports.userInfoEmailVerifyStart = async (req, res) => {
+    const {email} = req.body;
+    
+    // 비밀번호 찾기 최대 인증 횟수
+    const MAX_VERIFICATION_TIME = 10;
+    
+    // 이메일 유효성 검사
+    if (!email) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
     }
-}
+    
+    // 이메일 형식 검사
+    if (!regEmail.test(email)) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
+    }
+    
+    // 가입 계정 검사
+    let getUserByEmailResult;
+    try {
+        getUserByEmailResult = await authProvider.getUserByEmail(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 해당 이메일로 가입한 계정이 없을 경우
+    if (getUserByEmailResult.length < 1) {
+        return res.send(errResponse(baseResponse.SIGNIN_LOCAL_USER_NOT_FOUND));
+    }
+    
+    // 메일 인증번호 생성 (12자리 문자열)
+    const verificationCode = await generateRandomString(12);
+    
+    // 이메일 인증정보 불러오기
+    let emailVerificationResult;
+    try {
+        emailVerificationResult = await authProvider.getEmailVerification(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 기존에 생성한 이메일 인증정보 확인
+    let emailVerificationResponse = null;
+    if (emailVerificationResult.length < 1) {
+        emailVerificationResponse = await authService.createUserInfoEmailVerification(email, verificationCode);
+    } else {
+        // 현재 인증 횟수
+        const currentVerificationCount = emailVerificationResult[0].verification_count;
+        
+        // 하루 최대 인증 횟수를 초과할 경우
+        if (currentVerificationCount > MAX_VERIFICATION_TIME) {
+            return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_COUNT_EXCEED));
+        }
+        
+        // 인증 코드 수정 후 이메일 송신
+        emailVerificationResponse = await authService.updateUserInfoEmailVerification(email, verificationCode, currentVerificationCount + 1);
+    }
+    
+    return res.send(emailVerificationResponse);
+};
 
+/** 비밀번호 찾기 이메일 인증 완료 API
+ * [POST] /auth/userInfo/emailVerification/code
+ * body : email, code
+ */
+exports.userInfoEmailVerifyEnd = async (req, res) => {
+    const {email, code} = req.body;
+    
+    // 이메일 유효성 검사
+    if (!email) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_EMPTY));
+    }
+    
+    // 이메일 형식 검사
+    if (!regEmail.test(email)) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_TYPE_WRONG));
+    }
+    
+    // 인증코드 유효성 검사
+    if (!code) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_EMPTY));
+    }
+    
+    // 이메일 인증정보 불러오기
+    let emailVerificationResult;
+    try {
+        emailVerificationResult = await authProvider.getEmailVerification(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 이메일 인증정보가 없을 경우
+    if (emailVerificationResult.length < 1) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_NOT_GENERATED));
+    }
+    
+    // 인증코드가 맞지 않을 경우
+    if (code !== emailVerificationResult[0].code) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_NOT_MATCH));
+    }
+    
+    // 인증 시간을 초과한 경우 (4분)
+    const now = new Date();
+    const timeDiff = (now.getTime() - emailVerificationResult[0].updated_at.getTime()) / (60 * 1000);
+    if (timeDiff > 4) {
+        return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_TIMEOUT));
+    }
+    
+    // 가입 계정 검사
+    let userCheckResult;
+    try {
+        userCheckResult = await authProvider.getUserByEmail(email);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 해당 이메일로 가입한 계정이 없을 경우
+    if (userCheckResult.length < 1) {
+        return res.send(errResponse(baseResponse.SIGNIN_LOCAL_USER_NOT_FOUND));
+    }
+    
+    // 임시 비밀번호 생성 (20자리 문자열)
+    const newPassword = await generateRandomString(20);
+    
+    // 메일로 임시 비밀번호 전송
+    await authService.updateUserInfoPassword(email, newPassword);
+    
+    return res.send(response(baseResponse.SUCCESS));
+};
