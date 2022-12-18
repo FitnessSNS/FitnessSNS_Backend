@@ -75,7 +75,12 @@ module.exports = {
     // -----------------
     // 2. User (1250번대)
     // -----------------
-
+    MY_PAGE_USER_NOT_FOUND: {isSuccess: false, code: 1251, message: "사용자 정보를 찾을 수 없습니다"},
+    MY_PAGE_USER_STATUS_WRONG: {isSuccess: false, code: 1252, message: "사용 중지된 계정입니다" },
+    MY_PAGE_USER_PASSWORD_WRONG: {isSuccess: false, code: 1253, message: "사용자 비밀번호를 입력해주세요" },
+    MY_PAGE_USER_PASSWORD_SAME: {isSuccess: false, code: 1254, message: "새로운 비밀번호는 이전 비밀번호와 같을 수 없습니다" },
+    MY_PAGE_USER_PASSWORD_LENGTH_OVER: {isSuccess: false, code: 1255, message: "비밀번호는 8자리 이상, 20자리 이하로 입력해주세요"},
+    MY_PAGE_USER_PASSWORD_REGEX_WRONG: {isSuccess: false, code: 1256, message: "비밀번호는 최소 한 글자 이상의 영어, 숫자, 특수문자를 포함해서 입력해주세요"},
     
     
     // -----------------
