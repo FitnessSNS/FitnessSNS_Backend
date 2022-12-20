@@ -208,8 +208,12 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
     const timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
     
     // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
+    /*
     const met = 3.5 * 60 * timeDiff / (60 * 1000);
-    const calorie = Number((3.3 * met / 1000) * 5).toFixed(4);
+    const timeCalorie = Number((3.3 * met / 1000) * 5).toFixed(4);
+     */
+    // 60kg의 사람이 걷기 평균속도 (5km/h)로 5km를 운동했을 경우를 기준으로 칼로리 계산
+    const calorie = distance * (216 / 5000);
     
     // 운동 시간 간격이 0보다 작거나 같은 경우
     if (timeDiff <= 0) {
@@ -577,8 +581,12 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
         let timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
         
         // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
+        /*
         const met = 3.5 * 60 * timeDiff / (60 * 1000);
         const calorie = Number((3.3 * met / 1000) * 5).toFixed(4);
+        */
+        // 60kg의 사람이 걷기 평균속도 (5km/h)로 5km를 운동했을 경우를 기준으로 칼로리 계산
+        const calorie = distance * (216 / 5000);
         
         // 운동 시간 간격이 0보다 작거나 같은 경우
         if (timeDiff <= 0) {
