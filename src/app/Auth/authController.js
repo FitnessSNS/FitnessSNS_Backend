@@ -50,7 +50,20 @@ const getByteLength = async (str) => {
     }
 };
 
-// 랜덤 문자열 생성
+// 랜덤 문자열(숫자) 생성
+const generateRandomNumber = async (num) => {
+    const characters = '0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    
+    for (let i = 0; i < num; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    
+    return result;
+};
+
+// 랜덤 문자열(문자 + 숫자) 생성
 const generateRandomString = async (num) => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -108,7 +121,7 @@ exports.emailVerifyStart = async (req, res) => {
     }
     
     // 메일 인증번호 생성 (12자리 문자열)
-    const verificationCode = await generateRandomString(12);
+    const verificationCode = await generateRandomNumber(6);
     
     // 이메일 인증정보 불러오기
     let emailVerificationResult;
