@@ -1,0 +1,254 @@
+openapi: 3.0.3
+info:
+  title: Running High API Server
+  description: '러닝하이 API'
+  version: '1.1.0'
+servers:
+  - url: http://localhost:3000
+    description: 로컬 환경
+  - url: https://www.sosocamp.shop
+    description: AWS EC2 서버
+tags:
+  - name: User
+    description: 사용자 계정
+  - name: Auth
+    description: 로그인/회원가입
+  - name: Reward
+    description: 리워드
+paths:
+  /auth/signUp/emailVerification:
+    post:
+      tags:
+        - Auth
+      summary: 로컬계정 회원가입 이메일 인증
+      requestBody:
+        description: 인증 이메일 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 인증 이메일
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+      responses:
+        '200':
+          description: OK
+  /auth/signUp/emailVerification/code:
+    post:
+      tags:
+        - Auth
+      summary: 로컬계정 회원가입 이메일 인증 완료
+      requestBody:
+        description: 이메일 인증 코드
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 인증코드 받은 이메일 주소
+                  type: string
+                code:
+                  description: 이메일 인증 코드
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+              code: 123456
+      responses:
+        '200':
+          description: OK
+  /auth/signUp/nickname:
+    post:
+      tags:
+        - Auth
+      summary: 닉네임 중복 검사
+      requestBody:
+        description: 닉네임 중복 검사
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  description: 중복 검사용 닉네임
+                  type: string
+            example:
+              nickname: 런닝맨
+      responses:
+        '200':
+          description: OK
+  /auth/signUp:
+    post:
+      tags:
+        - Auth
+      summary: 로컬계정 회원가입
+      requestBody:
+        description: 회원가입 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 회원가입 이메일 주소
+                  type: string
+                nickname:
+                  description: 회원가입 닉네임
+                  type: string
+                password:
+                  description: 회원가입 비밀번호
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+              nickname: 런닝맨
+              password: TestPass1!
+      responses:
+        '200':
+          description: OK
+  /auth/oauth/authroization:
+    get:
+      tags:
+        - Auth
+      summary: OAuth 인가코드 링크
+      description: Redirection URL => https://running-high.ml/login
+      parameters:
+        - name: provider
+          in: query
+          description: 플랫폼 공급자
+          required: true
+      responses:
+        '200':
+          description: OK
+  /auth/signIn/local:
+    post:
+      tags:
+        - Auth
+      summary: 로컬계정 로그인
+      requestBody:
+        description: 로그인 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 로그인 이메일
+                  type: string
+                password:
+                  description: 로그인 비밀번호
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+              password: TestPass1!
+      responses:
+        '200':
+          description: OK
+  /auth/signIn/kakao:
+    get:
+      tags:
+        - Auth
+      summary: 카카오 로그인
+      parameters:
+        - name: code
+          in: query
+          description: 카카오 인가코드
+          required: true
+      responses:
+        '200':
+          description: OK
+  /auth/oauth/addInfo:
+    post:
+      tags:
+        - Auth
+      summary: 카카오 회원가입 추가정보 등록
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        description: 회원가입 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  description: 회원가입 닉네임
+                  type: string
+      responses:
+        '200':
+          description: OK
+  /auth/refresh:
+    get:
+      tags:
+        - Auth
+      summary: 사용자 액세스 토큰 재발급
+      parameters:
+        - name: refreshToken
+          in: cookie
+          description: 재발급 토큰
+          required: true
+      responses:
+        '200':
+          description: OK
+  /auth/logout:
+    get:
+      tags:
+        - Auth
+      summary: 로그아웃
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      responses:
+        '200':
+          description: OK
+  /auth/userInfo/emailVerification:
+    post:
+      tags:
+        - Auth
+      summary: 비밀번호 찾기 이메일 인증 시작
+      requestBody:
+        description: 비밀번호 찾기 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 인증코드 받을 이메일 주소
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+      responses:
+        '200':
+          description: OK
+  /auth/userInfo/emailVerification/code:
+    post:
+      tags:
+        - Auth
+      summary: 비밀번호 찾기 이메일 인증 완료
+      requestBody:
+        description: 비밀번호 찾기 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: 인증코드 받은 이메일 주소
+                  type: string
+                code:
+                  description: 이메일 인증코드
+                  type: string
+            example:
+              email: 'bbaekddo100@naver.com'
+              code: ak8Bs729D2ls
+      responses:
+        '200':
+          description: OK
