@@ -22,7 +22,7 @@ exports.updateUserPassword = async (userId, password) => {
     
     try {
         // 로컬계정 비밀번호 수정
-        await prisma.User.updateMany({
+        return await prisma.User.updateMany({
             data : {
                 password: hashedPassword,
                 salt    : salt,
@@ -58,16 +58,6 @@ exports.deleteUser = async (userId) => {
             where: {user_id: userId}
         });
         
-        // 성공한 챌린지 삭제
-        const deleteCompleteChallenge = prisma.CompletedChallenge.deleteMany({
-            where: {user_id: userId}
-        });
-        
-        // 실패한 챌린지 삭제
-        const deleteFailedChallenge = prisma.FailedChallenge.deleteMany({
-            where: {user_id: userId}
-        });
-        
         // 참여 챌린지 삭제
         const deleteUserChallenge = prisma.UserChallenge.deleteMany({
             where: {user_id: userId}
@@ -84,8 +74,11 @@ exports.deleteUser = async (userId) => {
         });
         
         // 트랜잭션 처리
-        await prisma.$transaction([deleteExerciseLocation, deleteExercise, deleteReward, deleteSession,
-            deleteCompleteChallenge, deleteFailedChallenge, deleteUserChallenge, deleteUserGroup]);
+        await prisma.$transaction([deleteExerciseLocation, deleteExercise, deleteReward,
+            deleteSession, deleteUserChallenge, deleteUserGroup, userDelete]);
+        
+        // 응답 객체
+        return response(baseResponse.SUCCESS, {userId});
     } catch (error) {
         customLogger.error(`deleteUser - transaction error\n${error.message}`);
         return errResponse(baseResponse.DB_ERROR);

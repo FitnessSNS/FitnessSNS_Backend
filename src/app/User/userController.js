@@ -108,9 +108,9 @@ exports.changePassword = async (req, res) => {
     }
     
     // 비밀번호 변경
-    await userService.updateUserPassword(userIdCheck, newPassword);
+    const changePasswordResponse = await userService.updateUserPassword(userIdCheck, newPassword);
     
-    return res.send(response(baseResponse.SUCCESS));
+    return res.send(changePasswordResponse);
 };
 
 /** 회원탈퇴 API
@@ -119,7 +119,7 @@ exports.changePassword = async (req, res) => {
  */
 exports.withdrawalAccount = async (req, res) => {
     const userIdCheck = req.verifiedToken.id;
-    const {userId} = req.body;
+    const {userId, password} = req.body;
     
     // 계정 상태 확인
     let userInfo;
@@ -143,8 +143,26 @@ exports.withdrawalAccount = async (req, res) => {
         return res.send(errResponse(baseResponse.MY_PAGE_USER_ID_NOT_SAME));
     }
     
-    // 회원탈퇴
-    await userService.deleteUser(userIdCheck);
+    // 사용자 ID 확인
+    if (userIdCheck !== userId) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_ID_NOT_SAME));
+    }
     
-    return res.send(response(baseResponse.SUCCESS));
+    // 현재 비밀번호 확인
+    let passwordCheck;
+    try {
+        passwordCheck = await userProvider.checkUserPassword(userIdCheck, password);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 비밀번호 일치 여부
+    if (!passwordCheck) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_PASSWORD_NOT_MATCHED));
+    }
+    
+    // 회원탈퇴
+    const withdrawalAccountResponse = await userService.deleteUser(userIdCheck);
+    
+    return res.send(withdrawalAccountResponse);
 };
