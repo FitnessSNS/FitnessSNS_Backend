@@ -157,7 +157,8 @@ exports.emailVerifyStart = async (req, res) => {
  * body : email, code
  */
 exports.emailVerifyEnd = async (req, res) => {
-    const {email, code} = req.body;
+    const {email} = req.body;
+    const code = Number(req.body.code);
     
     // 이메일 유효성 검사
     if (!email) {
@@ -188,7 +189,7 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 인증코드가 맞지 않을 경우
-    if (code !== Number(emailVerificationResult[0].code)) {
+    if (code !== emailVerificationResult[0].code) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_NOT_MATCH));
     }
     
