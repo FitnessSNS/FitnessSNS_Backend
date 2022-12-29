@@ -9,7 +9,7 @@ logs
 /node_modules/
 
 # environment keys
-.env.development
+.env
 .env.production
 
 #sqlite3 test database

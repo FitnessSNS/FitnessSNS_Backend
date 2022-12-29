@@ -21,15 +21,15 @@ exports.getRewardInfo = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     try {
@@ -55,15 +55,15 @@ exports.checkUserExerciseGroup = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 운동 종류 유효성 검사
@@ -101,15 +101,15 @@ exports.postUserRunning = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 경도와 위도 정보가 없을 경우
@@ -144,15 +144,15 @@ exports.postUserRunningCheck = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 운동 재시작 여부 타입 확인
@@ -197,15 +197,15 @@ exports.postUserRunningStop = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
    
     // 경도와 위도 정보가 없을 경우
@@ -241,15 +241,15 @@ exports.postUserRunningEnd = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 강제 종료 여부 확인
@@ -288,15 +288,15 @@ exports.postRunningImage = async function (req, res) {
         userInfo = await rewardProvider.retrieveUserInfo(userId);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.REWARD_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.REWARD_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.REWARD_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.REWARD_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
     }
     
     // 운동 사진 불러오기

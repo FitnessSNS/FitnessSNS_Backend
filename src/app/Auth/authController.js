@@ -120,8 +120,9 @@ exports.emailVerifyStart = async (req, res) => {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_EMAIL_DUPLICATED));
     }
     
-    // 메일 인증번호 생성 (12자리 문자열)
-    const verificationCode = await generateRandomNumber(6);
+    // 메일 인증번호 생성 (6자리 숫자)
+    let verificationCode = await generateRandomNumber(6);
+    verificationCode = Number(verificationCode);
     
     // 이메일 인증정보 불러오기
     let emailVerificationResult;
@@ -187,7 +188,7 @@ exports.emailVerifyEnd = async (req, res) => {
     }
     
     // 인증코드가 맞지 않을 경우
-    if (code !== emailVerificationResult[0].code) {
+    if (code !== Number(emailVerificationResult[0].code)) {
         return res.send(errResponse(baseResponse.EMAIL_VERIFICATION_CODE_NOT_MATCH));
     }
     

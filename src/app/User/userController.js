@@ -3,16 +3,12 @@ const {response, errResponse} = require('../../../config/response');
 const userService = require('./userService');
 const userProvider = require('./userProvider');
 const redis = require('redis');
-const rewardProvider = require("../Reward/rewardProvider");
 const redisClient = new redis.createClient();
 
 // redis client 에러 발생
 redisClient.on('error', (error) => {
     customLogger.error(`Redis Client Error\n${error.message}`);
 });
-
-// 이메일 정규표현식
-const regEmail = /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/;
 
 // 닉네임 정규표현식
 const regNickname = /[^\w\sㄱ-힣]|[\_]/g;
@@ -48,52 +44,57 @@ const getByteLength = async (str) => {
     }
 };
 
-// 랜덤 문자열 생성
-const generateRandomString = async (num) => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    const charactersLength = characters.length;
-    
-    for (let i = 0; i < num; i++) {
-        result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    
-    return result;
-};
-
 /** 비밀번호 변경 API
  * [POST] /users/myPage/userInfo
- * body : currentPassword, newPassword
+ * body : userId, currentPassword, newPassword
  */
 exports.changePassword = async (req, res) => {
-    const userId = req.verifiedToken.id;
-    const {currentPassword, newPassword} = req.body;
+    const userIdCheck = req.verifiedToken.id;
+    const {userId, currentPassword, newPassword} = req.body;
     
     // 계정 상태 확인
     let userInfo;
     try {
-        userInfo = await userProvider.retrieveUserInfo(userId);
+        userInfo = await userProvider.retrieveUserInfo(userIdCheck);
         // 계정을 확인할 수 없는 경우
         if (userInfo.length < 1) {
-            return errResponse(baseResponse.MY_PAGE_USER_NOT_FOUND);
+            return res.send(errResponse(baseResponse.MY_PAGE_USER_NOT_FOUND));
         }
         
         // 사용 중지된 계정일 경우
         if (userInfo[0].status !== 'RUN') {
-            return errResponse(baseResponse.MY_PAGE_USER_STATUS_WRONG);
+            return res.send(errResponse(baseResponse.MY_PAGE_USER_STATUS_WRONG));
         }
     } catch {
-        return errResponse(baseResponse.DB_ERROR);
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 사용자 ID 확인
+    if (userIdCheck !== userId) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_ID_NOT_SAME));
+    }
+    
+    // 현재 비밀번호 확인
+    let passwordCheck;
+    try {
+        passwordCheck = await userProvider.checkUserPassword(userIdCheck, currentPassword);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 비밀번호 일치 여부
+    if (!passwordCheck) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_PASSWORD_NOT_MATCHED));
     }
     
     // 비밀번호 유효성 검사
     if (!currentPassword || !newPassword) {
-        return errResponse(baseResponse.MY_PAGE_USER_PASSWORD_WRONG);
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_PASSWORD_WRONG));
     }
     
     // 비밀번호 일치 검사
     if (currentPassword === newPassword) {
-        return errResponse(baseResponse.MY_PAGE_USER_PASSWORD_SAME);
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_PASSWORD_SAME));
     }
     
     // 비밀번호 길이 검사
@@ -107,7 +108,61 @@ exports.changePassword = async (req, res) => {
     }
     
     // 비밀번호 변경
-    await userService.updateUserPassword(userId, newPassword);
+    const changePasswordResponse = await userService.updateUserPassword(userIdCheck, newPassword);
     
-    return res.send(response(baseResponse.SUCCESS));
+    return res.send(changePasswordResponse);
+};
+
+/** 회원탈퇴 API
+ * [POST] /users/myPage/withdrawal
+ * body : userId
+ */
+exports.withdrawalAccount = async (req, res) => {
+    const userIdCheck = req.verifiedToken.id;
+    const {userId, password} = req.body;
+    
+    // 계정 상태 확인
+    let userInfo;
+    try {
+        userInfo = await userProvider.retrieveUserInfo(userIdCheck);
+        // 계정을 확인할 수 없는 경우
+        if (userInfo.length < 1) {
+            return res.send(errResponse(baseResponse.MY_PAGE_USER_NOT_FOUND));
+        }
+        
+        // 사용 중지된 계정일 경우
+        if (userInfo[0].status !== 'RUN') {
+            return res.send(errResponse(baseResponse.MY_PAGE_USER_STATUS_WRONG));
+        }
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 사용자 ID 확인
+    if (userIdCheck !== userId) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_ID_NOT_SAME));
+    }
+    
+    // 사용자 ID 확인
+    if (userIdCheck !== userId) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_ID_NOT_SAME));
+    }
+    
+    // 현재 비밀번호 확인
+    let passwordCheck;
+    try {
+        passwordCheck = await userProvider.checkUserPassword(userIdCheck, password);
+    } catch {
+        return res.send(errResponse(baseResponse.DB_ERROR));
+    }
+    
+    // 비밀번호 일치 여부
+    if (!passwordCheck) {
+        return res.send(errResponse(baseResponse.MY_PAGE_USER_PASSWORD_NOT_MATCHED));
+    }
+    
+    // 회원탈퇴
+    const withdrawalAccountResponse = await userService.deleteUser(userIdCheck);
+    
+    return res.send(withdrawalAccountResponse);
 };
