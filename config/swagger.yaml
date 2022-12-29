@@ -252,3 +252,65 @@ paths:
       responses:
         '200':
           description: OK
+  /users/myPage/userInfo:
+    post:
+      tags:
+        - User
+      summary: 비밀번호 변경
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        description: 사용자 정보
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    description: 사용자 ID
+                    type: integer
+                  currentPassword:
+                    description: 현재 비밀번호
+                    type: string
+                  newPassword:
+                    description: 변경 비밀번호
+                    type: string
+              example:
+                userId: 1
+                currentPassword: pass1
+                newPassword: pass2
+      responses:
+        '200':
+          description: OK
+  /users/myPage/withdrawal:
+    post:
+      tags:
+        - User
+      summary: 회원탈퇴
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        description: 탈퇴 회원 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  description: 사용자 ID
+                  type: integer
+                password:
+                  description: 사용자 비밀번호
+                  type: string
+            example:
+              userId: 1
+              password: TestPass1!
+      responses:
+        '200':
+          description: OK
