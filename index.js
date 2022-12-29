@@ -5,7 +5,7 @@ global.customLogger = require('./config/winston').logger;
 
 // 환경변수 불러오기
 require('dotenv').config({
-    path: `.env.${process.env?.NODE_ENV ?? 'development'}`
+    // path: `.env.${process.env?.NODE_ENV ?? 'development'}`
 });
 
 // express 객체 생성
@@ -16,4 +16,4 @@ const port = process.env.PORT;
 app.listen(port, '0.0.0.0');
 
 // 서버 시작 알림
-customLogger.info(`${process?.env?.NODE_ENV ?? 'development'} - runningHigh API Server Start At Port ${port}`);
+customLogger.info(`${process.env?.NODE_ENV ?? 'development'} - runningHigh API Server Start At Port ${port}`);
