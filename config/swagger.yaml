@@ -53,7 +53,7 @@ paths:
                   type: string
                 code:
                   description: 이메일 인증 코드
-                  type: string
+                  type: integer
             example:
               email: 'bbaekddo100@naver.com'
               code: 123456
