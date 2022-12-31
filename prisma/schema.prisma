@@ -16,8 +16,8 @@ model Challenge {
   condition          Int
   end_date           DateTime             @db.Date
   total_user         Int                  @default(0)
-  created_at         DateTime             @default(now()) @db.DateTime(0)
-  updated_at         DateTime             @default(now()) @db.DateTime(0)
+  created_at         DateTime             @default(dbgenerated("NOW()")) @db.DateTime(0)
+  updated_at         DateTime             @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime(0)
   status             String               @default("RUN") @db.VarChar(10)
   CompletedChallenge CompletedChallenge[]
   FailedChallenge    FailedChallenge[]
@@ -29,8 +29,8 @@ model ChallengeConfirm {
   id                Int           @id @default(autoincrement())
   user_challenge_id Int
   isSuccess         Boolean       @default(false)
-  created_at        DateTime      @default(now()) @db.DateTime(0)
-  updated_at        DateTime      @default(now()) @db.DateTime(0)
+  created_at        DateTime      @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at        DateTime      @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status            String        @default("RUN") @db.VarChar(10)
   UserChallenge     UserChallenge @relation(fields: [user_challenge_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_UserChallenge_TO_ChallengeConfirm_1")
 
@@ -41,8 +41,8 @@ model CompletedChallenge {
   id           Int       @id @default(autoincrement())
   challenge_id Int
   user_id      Int?
-  created_at   DateTime  @default(now()) @db.DateTime(0)
-  updated_at   DateTime  @default(now()) @db.DateTime(0)
+  created_at   DateTime  @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at   DateTime  @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status       String    @default("RUN") @db.VarChar(10)
   Challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Challenge_TO_CompletedChallenge_1")
 
@@ -56,8 +56,8 @@ model Coupon {
   content    String?  @db.Text
   code       String?  @db.Text
   price      Int      @default(0)
-  created_at DateTime @default(now()) @db.DateTime(0)
-  updated_at DateTime @default(now()) @db.DateTime(0)
+  created_at DateTime @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status     String   @default("RUN") @db.VarChar(10)
 }
 
@@ -66,8 +66,8 @@ model ExerciseLocation {
   user_id    Int
   longitude  Decimal  @default(0.0000000000) @db.Decimal(18, 10)
   latitude   Decimal  @default(0.0000000000) @db.Decimal(18, 10)
-  created_at DateTime @default(now()) @db.DateTime(0)
-  updated_at DateTime @default(now()) @db.DateTime(0)
+  created_at DateTime @default(dbgenerated("NOW()")) @db.DateTime(0)
+  updated_at DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime(0)
   status     String   @default("RUN") @db.VarChar(10)
   User       User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_ExerciseLocation_1")
 
@@ -77,8 +77,8 @@ model ExerciseLocation {
 model FailedChallenge {
   id           Int       @id @default(autoincrement())
   challenge_id Int
-  created_at   DateTime  @default(now()) @db.DateTime(0)
-  updated_at   DateTime  @default(now()) @db.DateTime(0)
+  created_at   DateTime  @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at   DateTime  @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status       String    @default("RUN") @db.VarChar(10)
   Challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Challenge_TO_FailedChallenge_1")
 
@@ -90,8 +90,8 @@ model Reward {
   user_id    Int
   point      Int      @default(0)
   reason     String?  @db.Text
-  created_at DateTime @default(now()) @db.DateTime(0)
-  updated_at DateTime @default(now()) @db.DateTime(0)
+  created_at DateTime @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status     String   @default("RUN") @db.VarChar(10)
   User       User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_Reward_1")
 
@@ -103,8 +103,8 @@ model Session {
   user_id       Int      @unique(map: "user_id")
   refresh_token String   @db.Text
   ip            String   @db.Text
-  created_at    DateTime @default(now()) @db.DateTime(0)
-  updated_at    DateTime @default(now()) @db.DateTime(0)
+  created_at    DateTime @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at    DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   User          User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Session_user_id_fk")
 }
 
@@ -115,8 +115,8 @@ model User {
   password         String?            @db.Text
   salt             String?            @db.Text
   nickname         Bytes?             @db.VarBinary(36)
-  created_at       DateTime           @default(now()) @db.DateTime(0)
-  updated_at       DateTime           @default(now()) @db.DateTime(0)
+  created_at       DateTime           @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at       DateTime           @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status           String             @default("RUN") @db.VarChar(10)
   Exercise         Exercise[]
   ExerciseLocation ExerciseLocation[]
@@ -133,8 +133,8 @@ model UserChallenge {
   challenge_id     Int
   user_id          Int
   count            Int?
-  created_at       DateTime           @default(now()) @db.DateTime(0)
-  updated_at       DateTime           @default(now()) @db.DateTime(0)
+  created_at       DateTime           @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at       DateTime           @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status           String             @default("RUN") @db.VarChar(10)
   ChallengeConfirm ChallengeConfirm[]
   Challenge        Challenge          @relation(fields: [challenge_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Challenge_TO_UserChallenge_1")
@@ -151,8 +151,8 @@ model Exercise {
   time       DateTime @default(dbgenerated("'00:00:00'")) @db.Time(0)
   calorie    Decimal  @default(0.0000) @db.Decimal(8, 4)
   image      String?  @db.Text
-  created_at DateTime @default(now()) @db.DateTime(0)
-  updated_at DateTime @default(now()) @db.DateTime(0)
+  created_at DateTime @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status     String   @default("RUN") @db.VarChar(10)
   User       User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_Distance_1")
 
@@ -164,8 +164,8 @@ model GroupChallenge {
   challenge_id Int
   group_id     Int
   count        Int       @default(0)
-  created_at   DateTime  @default(now()) @db.DateTime(0)
-  updated_at   DateTime  @default(now()) @db.DateTime(0)
+  created_at   DateTime  @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at   DateTime  @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status       String    @default("RUN") @db.VarChar(10)
   Challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Challenge_TO_GroupChallenge_1")
   GroupList    GroupList @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_GroupList_TO_GroupChallenge_1")
@@ -179,8 +179,8 @@ model GroupList {
   name           String?          @db.VarChar(30)
   content        String?          @db.VarChar(300)
   total_user     Int              @default(0)
-  created_at     DateTime         @default(now()) @db.DateTime(0)
-  updated_at     DateTime         @default(now()) @db.DateTime(0)
+  created_at     DateTime         @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at     DateTime         @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status         String           @default("RUN") @db.VarChar(10)
   GroupChallenge GroupChallenge[]
   UserGroup      UserGroup[]
@@ -190,8 +190,8 @@ model Mention {
   id         Int       @id @default(autoincrement())
   content    String?   @db.VarChar(100)
   date       DateTime? @db.Date
-  created_at DateTime  @default(now()) @db.DateTime(0)
-  updated_at DateTime  @default(now()) @db.DateTime(0)
+  created_at DateTime  @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at DateTime  @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status     String    @default("RUN") @db.VarChar(10)
 }
 
@@ -199,8 +199,8 @@ model UserGroup {
   id         Int       @id @default(autoincrement())
   user_id    Int
   group_id   Int
-  created_at DateTime  @default(now()) @db.DateTime(0)
-  updated_at DateTime  @default(now()) @db.DateTime(0)
+  created_at DateTime  @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at DateTime  @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
   status     String    @default("RUN") @db.VarChar(10)
   GroupList  GroupList @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_GroupList_TO_UserGroup_1")
   User       User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_User_TO_UserGroup_1")
@@ -214,6 +214,6 @@ model EmailVerification {
   email              String   @unique(map: "email") @db.VarChar(50)
   code               Int      @default(0)
   verification_count Int      @default(1)
-  created_at         DateTime @default(now()) @db.DateTime(0)
-  updated_at         DateTime @default(now()) @db.DateTime(0)
+  created_at         DateTime @default(dbgenerated("NOW()")) @db.DateTime
+  updated_at         DateTime @default(dbgenerated("NOW() ON UPDATE NOW()")) @db.DateTime
 }
