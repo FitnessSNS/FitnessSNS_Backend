@@ -102,18 +102,20 @@ exports.startUserRunning = async (user, longitude, latitude) => {
     }
     
     // 날짜 비교용 오늘, 내일 날짜 생성
-    const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
     const todayCheck = new Date();
-    todayCheck.setHours(9, 0, 0, 0);
-    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-    tomorrowCheck.setHours(9, 0, 0, 0);
+    const today1 = new Date();
+    const today2 = new Date();
+    const tomorrowCheck = new Date(today1.setDate(today1.getDate() + 1));
+    const yesterdayCheck = new Date(today2.setDate(today2.getDate() - 1));
     
     // 운동 기록 조회
     try {
-        const userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        let userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        
+        // 어제 시작한 운동이 있는지 조회
+        if (userExercise.length < 0) {
+            userExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+        }
         
         // 종료되지 않은 운동 기록이 있을 경우
         if (userExercise.length > 0) {
@@ -154,14 +156,20 @@ exports.startUserRunning = async (user, longitude, latitude) => {
     let getUserExercise;
     try {
         getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        
+        // 어제 시작한 운동 기록으로 조회
+        if (getUserExercise.length < 1) {
+            getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+            
+            // 어제 운동 기록도 없을 경우
+            if (getUserExercise.length < 1) {
+                return errResponse(baseResponse.RUNNING_USER_EXERCISE_NOT_FOUND);
+            }
+        }
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
     
-    // 조회된 운동 기록이 없을 경우
-    if (getUserExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_USER_EXERCISE_NOT_FOUND);
-    }
     // 운동 시간 계산
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
     
@@ -202,10 +210,8 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
     
     // 운동 시간 간격 계산
     const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
-    const timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
+    // MySQL에 입력된 Date를 UTC 기준으로 불러오기 떄문에 9시간을 다시 빼줌
+    const timeDiff = today.getTime() - (priorLocation[0].updated_at.getTime() - (9 * 60 * 60 * 1000));
     
     // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
     /*
@@ -225,16 +231,23 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
     
     // 날짜 비교용 오늘, 내일 날짜 생성
     const todayCheck = new Date();
-    todayCheck.setHours(9, 0, 0, 0);
-    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-    tomorrowCheck.setHours(9, 0, 0, 0);
+    const today2 = new Date();
+    const today3 = new Date();
+    const tomorrowCheck = new Date(today2.setDate(today2.getDate() + 1));
+    const yesterdayCheck = new Date(today3.setDate(today3.getDate() - 1));
     
     // 운동 기록 조회
-    const userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+    let userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
     
     // 운동 기록이 조회 안 될 경우 에러
     if (userExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+        // 어제 운동 기록으로 조회
+        userExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+        
+        // 어제 운동 기록도 없을 경우
+        if (userExercise.length < 1) {
+            return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+        }
     }
     
     // 추가된 운동 거리, 시간 계산
@@ -264,8 +277,7 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
             },
             data : {
                 longitude : longitude,
-                latitude  : latitude,
-                updated_at: today
+                latitude  : latitude
             }
         });
         
@@ -282,8 +294,7 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
             data : {
                 distance  : addDistance,
                 time      : addTime,
-                calorie   : addCalorie,
-                updated_at: today
+                calorie   : addCalorie
             }
         });
         
@@ -298,13 +309,18 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
     let getUserExercise;
     try {
         getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        
+        // 어제 운동 기록으로 조회
+        if (getUserExercise.length < 1) {
+            getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+            
+            // 어제 운동 기록도 없을 경우
+            if (getUserExercise.length < 1) {
+                return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+            }
+        }
     } catch {
         return errResponse(baseResponse.DB_ERROR);
-    }
-    
-    // 조회된 운동 기록이 없을 경우
-    if (getUserExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
     }
     
     // 운동 시간 계산
@@ -330,12 +346,6 @@ exports.checkUserRunning = async (user, longitude, latitude) => {
 
 // 운동 진행 (재시작)
 exports.restartUserRunning = async (user, longitude, latitude) => {
-    // 오늘 날짜
-    const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
-    
     // 이전 운동 위치 수정
     try {
         await prisma.ExerciseLocation.updateMany({
@@ -345,8 +355,7 @@ exports.restartUserRunning = async (user, longitude, latitude) => {
             },
             data : {
                 longitude : longitude,
-                latitude  : latitude,
-                updated_at: today
+                latitude  : latitude
             }
         });
     } catch (error) {
@@ -356,28 +365,31 @@ exports.restartUserRunning = async (user, longitude, latitude) => {
     
     // 날짜 비교용 오늘, 내일 날짜 생성
     const todayCheck = new Date();
-    todayCheck.setHours(9, 0, 0, 0);
-    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-    tomorrowCheck.setHours(9, 0, 0, 0);
+    const today2 = new Date();
+    const today3 = new Date();
+    const tomorrowCheck = new Date(today2.setDate(today2.getDate() + 1));
+    const yesterdayCheck = new Date(today3.setDate(today3.getDate() - 1));
     
     // 운동 기록 재조회
     let getUserExercise;
     try {
         getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        
+        // 어제 운동 기록으로 조회
+        if (getUserExercise.length < 1) {
+            getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+            
+            // 어제 운동 기록도 없을 경우
+            if (getUserExercise.length < 1) {
+                return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
+            }
+        }
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
     
-    // 조회된 운동 기록이 없을 경우
-    if (getUserExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_CHECK_EXERCISE_NOT_FOUND);
-    }
-    
     // 운동 시간 계산
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
-    
-    // 강제 종료 설정
-    let forceEnd = false;
     
     // 응답 객체 생성
     const result = {
@@ -390,7 +402,7 @@ exports.restartUserRunning = async (user, longitude, latitude) => {
         distance      : getUserExercise[0].distance,
         calorie       : Math.floor(getUserExercise[0].calorie),
         image         : getUserExercise[0].image,
-        forceEnd      : forceEnd
+        forceEnd      : false
     }
     
     return response(baseResponse.SUCCESS, result);
@@ -416,10 +428,8 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
     
     // 운동 시간 간격 계산
     const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
-    const timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
+    // MySQL에 입력된 Date를 UTC 기준으로 불러오기 떄문에 9시간을 다시 빼줌
+    const timeDiff = today.getTime() - (priorLocation[0].updated_at.getTime() - (9 * 60 * 60 * 1000));
     
     // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
     const met = 3.5 * 60 * timeDiff / (60 * 1000);
@@ -435,21 +445,27 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
     
     // 날짜 비교용 오늘, 내일 날짜 생성
     const todayCheck = new Date();
-    todayCheck.setHours(9, 0, 0, 0);
-    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-    tomorrowCheck.setHours(9, 0, 0, 0);
+    const today2 = new Date();
+    const today3 = new Date();
+    const tomorrowCheck = new Date(today2.setDate(today2.getDate() + 1));
+    const yesterdayCheck = new Date(today3.setDate(today3.getDate() - 1));
     
     // 운동 기록 조회
     let userExercise;
     try {
         userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+        
+        // 어제 운동 기록으로 조회
+        if (userExercise.length < 1) {
+            userExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+            
+            // 어제 운동 기록도 없을 경우
+            if (userExercise.length < 1) {
+                return errResponse(baseResponse.RUNNING_STOP_EXERCISE_NOT_FOUND);
+            }
+        }
     } catch {
         return errResponse(baseResponse.DB_ERROR);
-    }
-    
-    // 운동 기록이 조회 안 될 경우 에러
-    if (userExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_STOP_EXERCISE_NOT_FOUND);
     }
     
     // 추가된 운동 거리, 시간 계산
@@ -480,8 +496,7 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
             },
             data : {
                 longitude : longitude,
-                latitude  : latitude,
-                updated_at: today
+                latitude  : latitude
             }
         });
         
@@ -498,8 +513,7 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
             data : {
                 distance  : addDistance,
                 time      : addTime,
-                calorie   : addCalorie,
-                updated_at: today
+                calorie   : addCalorie
             }
         });
         
@@ -514,15 +528,20 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
     let getUserExercise;
     try {
         getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+    
+        // 어제 운동 기록으로 조회
+        if (getUserExercise.length < 1) {
+            getUserExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+        
+            // 어제 운동 기록도 없을 경우
+            if (getUserExercise.length < 1) {
+                return errResponse(baseResponse.RUNNING_STOP_EXERCISE_NOT_FOUND);
+            }
+        }
     } catch {
         return errResponse(baseResponse.DB_ERROR);
     }
-    
-    // 조회된 운동 기록이 없을 경우
-    if (getUserExercise.length < 1) {
-        return errResponse(baseResponse.RUNNING_STOP_EXERCISE_NOT_FOUND);
-    }
-    
+   
     // 운동 시간 계산
     const checkTime = getExerciseTime(timeDiff);
     const exerciseTime = getExerciseTime(getUserExercise[0].time.getTime());
@@ -548,15 +567,13 @@ exports.pauseUserRunning = async (user, longitude, latitude) => {
 exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
     // 오늘 날짜
     const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
     
     // 날짜 비교용 오늘, 내일 날짜 생성
     const todayCheck = new Date();
-    todayCheck.setHours(9, 0, 0, 0);
-    const tomorrowCheck = new Date(todayYear, todayMonth, todayDate + 1);
-    tomorrowCheck.setHours(9, 0, 0, 0);
+    const today2 = new Date();
+    const today3 = new Date();
+    const tomorrowCheck = new Date(today2.setDate(today2.getDate() + 1));
+    const yesterdayCheck = new Date(today3.setDate(today3.getDate() - 1));
     
     // 강제 종료 여부 확인
     let addDistance, addTime, addCalorie, userExercise;
@@ -578,7 +595,8 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
         const distance = await getDistanceFromLatLon(priorLocation[0].longitude, priorLocation[0].latitude, longitude, latitude);
         
         // 운동 시간 간격 계산
-        let timeDiff = today.getTime() - priorLocation[0].updated_at.getTime();
+        // MySQL에 입력된 Date를 UTC 기준으로 불러오기 떄문에 9시간을 다시 빼줌
+        let timeDiff = today.getTime() - (priorLocation[0].updated_at.getTime() - (9 * 60 * 60 * 1000));
         
         // 운동 칼로리 계산 (1 MET = 3.5ml / 60kg / 60s, 산소 1L당 5kcal)
         /*
@@ -599,15 +617,20 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
         // 운동 기록 조회
         try {
             userExercise = await rewardProvider.retrieveUserExercise(user.userId, todayCheck, tomorrowCheck);
+    
+            // 어제 운동 기록으로 조회
+            if (userExercise.length < 1) {
+                userExercise = await rewardProvider.retrieveUserExercise(user.userId, yesterdayCheck, todayCheck);
+        
+                // 어제 운동 기록도 없을 경우
+                if (userExercise.length < 1) {
+                    return errResponse(baseResponse.RUNNING_END_EXERCISE_NOT_FOUND);
+                }
+            }
         } catch {
             return errResponse(baseResponse.DB_ERROR);
         }
-        
-        // 운동 기록이 조회 안 될 경우 에러
-        if (userExercise.length < 1) {
-            return errResponse(baseResponse.RUNNING_END_EXERCISE_NOT_FOUND);
-        }
-        
+       
         // 추가된 운동 거리, 시간 계산
         addDistance = userExercise[0].distance + distance;
         addTime = new Date(userExercise[0].time.getTime() + timeDiff);
@@ -655,7 +678,6 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
                 data : {
                     longitude : longitude,
                     latitude  : latitude,
-                    updated_at: today,
                     status    : 'STOP'
                 }
             });
@@ -674,7 +696,6 @@ exports.endUserRunning = async (user, forceEnd, longitude, latitude) => {
                     distance  : addDistance,
                     time      : addTime,
                     calorie   : addCalorie,
-                    updated_at: today,
                     status    : 'STOP'
                 }
             });
@@ -768,3 +789,5 @@ exports.createRunningImage = async (user, exerciseId, imageLink) => {
     
     return response(baseResponse.SUCCESS, result);
 };
+
+// TODO: 이벤트 스케쥴러 추가!
