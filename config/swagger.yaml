@@ -314,3 +314,198 @@ paths:
       responses:
         '200':
           description: OK
+  /rewards/users:
+    get:
+      tags:
+        - Reward
+      summary: 리워드 메인 페이지
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      responses:
+        '200':
+          description: OK
+  /rewards/running/exercise:
+    get:
+      tags:
+        - Reward
+      summary: 운동 선택
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+        - name: type
+          in: query
+          description: '운동 종류 (그룹운동 : G / 개인운동 : P)'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /rewards/running/start:
+    post:
+      tags:
+        - Reward
+      summary: 운동 시작
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        required: true
+        description: 사용자 위치 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longitude:
+                  description: 현재 위치의 경도
+                  type: string
+                latitude:
+                  description: 현재 위치의 위도
+                  type: string
+            example:
+              longitude: '127.04121226963451'
+              latitude: '37.54551935928244'
+      responses:
+        '200':
+          description: OK
+  /rewards/running/check:
+    post:
+      tags:
+        - Reward
+      summary: 운동 진행
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+        - name: isRestart
+          in: query
+          description: 운동 일시정지 후 재시작 여부
+          required: true
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        description: 사용자 위치 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longitude:
+                  description: 현재 위치의 경도
+                  type: string
+                latitude:
+                  description: 현재 위치의 위도
+                  type: string
+            example:
+              longitude: '127.04028456049792'
+              latitude: '37.545871069059146'
+      responses:
+        '200':
+          description: OK
+  /rewards/running/stop:
+    post:
+      tags:
+        - Reward
+      summary: 운동 일시정지
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        required: true
+        description: 사용자 위치 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longitude:
+                  description: 현재 위치의 경도
+                  type: string
+                latitude:
+                  description: 현재 위치의 위도
+                  type: string
+            example:
+              longitude: '127.03916444811568'
+              latitude: '37.54617778554935'
+      responses:
+        '200':
+          description: OK
+  /rewards/running/end:
+    post:
+      tags:
+        - Reward
+      summary: 운동 종료
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+        - name: forceEnd
+          in: query
+          description: 운동 강제 종료 여부
+          required: true
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        description: 사용자 위치 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longitude:
+                  description: 현재 위치의 경도
+                  type: string
+                latitude:
+                  description: 현재 위치의 위도
+                  type: string
+            example:
+              longitude: '127.03821384085329'
+              latitude: '37.54604294715771'
+      responses:
+        '200':
+          description: OK
+  /rewards/running/proofImage:
+    post:
+      tags:
+        - Reward
+      summary: 운동 인증사진 업로드
+      parameters:
+        - name: x-access-token
+          in: header
+          description: 사용자 액세스 토큰
+          required: true
+      requestBody:
+        required: true
+        description: 운동 인증사진
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                exercise_id:
+                  description: 운동 기록 ID
+                  type: integer
+                image:
+                  description: 운동 사진
+                  type: string
+                  format: base64
+            example:
+              exercise_id: 1
+              image: 'exercise.jpg'
+      responses:
+        '200':
+          description: OK
